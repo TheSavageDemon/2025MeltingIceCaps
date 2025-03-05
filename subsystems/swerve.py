@@ -1,17 +1,21 @@
 import math
-from typing import Callable, overload
+from typing import Callable, overload, Self
+from constants import Constants
 
 from commands2 import Command, Subsystem
 from commands2.sysid import SysIdRoutine
+from enum import Enum, auto
 from pathplannerlib.auto import AutoBuilder, RobotConfig
 from pathplannerlib.controller import PIDConstants, PPHolonomicDriveController
-from phoenix6 import swerve, units, utils, SignalLogger
-from phoenix6.swerve.requests import ApplyRobotSpeeds
-from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT
+from phoenix6 import swerve, units, utils, SignalLogger, StatusCode
+from phoenix6.swerve import SwerveModule
+from phoenix6.swerve.requests import ApplyRobotSpeeds, SwerveRequest, ForwardPerspectiveValue, FieldCentric
+from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT, SwerveControlParameters
+from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
 from wpilib import DriverStation, Notifier, RobotController
 from wpilib.sysid import SysIdRoutineLog
-from wpimath.geometry import Rotation2d
-from wpimath.units import rotationsToRadians
+from wpimath.geometry import Rotation2d, Pose2d
+from wpimath.units import rotationsToRadians, degreesToRadians
 
 
 class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
@@ -328,3 +332,208 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         self._last_sim_time = utils.get_current_time_seconds()
         self._sim_notifier = Notifier(_sim_periodic)
         self._sim_notifier.startPeriodic(self._SIM_LOOP_PERIOD)
+
+class DriverAssist(SwerveRequest):
+
+    class BranchSide(Enum):
+        """
+        Enum that determines which side of the reef we score on, left branch or right branch.
+        """
+        LEFT = auto()
+        RIGHT = auto()
+
+    # All poses on the blue side of the reef
+    _blue_branch_left_targets = [
+        Pose2d(3.091, 4.181, degreesToRadians(0)), # A
+        Pose2d(3.656, 2.916, degreesToRadians(60)), # C
+        Pose2d(5.023, 2.772, degreesToRadians(120)), # E
+        Pose2d(5.850, 3.851, degreesToRadians(180)), # G
+        Pose2d(5.347, 5.134, degreesToRadians(240)), # I
+        Pose2d(3.932, 5.302, degreesToRadians(300)), # K
+    ]
+
+    _blue_branch_right_targets = [
+        Pose2d(3.091, 3.863, degreesToRadians(0)), # B
+        Pose2d(3.956, 2.748, degreesToRadians(60)), # D
+        Pose2d(5.323, 2.928, degreesToRadians(120)), # F
+        Pose2d(5.862, 4.187, degreesToRadians(180)), # H
+        Pose2d(5.047, 5.290, degreesToRadians(240)), # J
+        Pose2d(3.668, 5.110, degreesToRadians(300)), # L
+    ]
+
+    # To find the poses on the red side of the reef, we mirror each pose and rotate by 180 degrees.
+    _red_branch_left_targets = [
+       Pose2d(
+           Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
+           Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
+           pose.rotation() + Rotation2d.fromDegrees(180)
+       ) for pose in _blue_branch_left_targets
+    ]
+
+    _red_branch_right_targets = [
+       Pose2d(
+           Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
+           Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
+           pose.rotation() + Rotation2d.fromDegrees(180)
+       ) for pose in _blue_branch_right_targets
+    ]
+
+    def __init__(self) -> None:
+        
+        # Direction we go to (this will be determined by the bumper we press)
+        self.direction = DriverAssist.BranchSide.LEFT
+
+        # velocity_x (forward) determined by driver
+        self.velocity_x = 0
+
+        # PID controllers for the y (left) and heading (rotating)
+        self.translation_y_controller = PhoenixPIDController(0.0, 0.0, 0.0)
+        self.heading_controller = PhoenixPIDController(0.0, 0.0, 0.0)
+
+        # The deadband on our velocity forward that the driver controls
+        self.velocity_deadband = 0
+
+        # Our request types for the drive and steer motors respectively
+        # TODO: Velocity or Open Loop?
+        self.drive_request_type = SwerveModule.DriveRequestType.VELOCITY
+        self.steer_request_type = SwerveModule.SteerRequestType.POSITION
+        
+        # Whether we desaturate wheel speeds. This ensures that no speed is above the maximum speed the motor can drive at.
+        self.desaturate_wheel_speeds = True
+
+        # Which direction is forward?
+        self.forward_perspective = ForwardPerspectiveValue.OPERATOR_PERSPECTIVE
+
+        # The pose we want to travel to
+        self._target_pose = Pose2d()
+        self._field_centric = FieldCentric()
+    
+    def with_direction(self, direction) -> Self:
+        """
+        Modifies the direction we target and returns this request for method chaining.
+
+        :param direction: The direction we go to
+        :type direction: DriverAssist.BranchSide
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.direction = direction
+        return self
+
+    def with_velocity_x(self, velocity_x) -> Self:
+        """
+        Modifies the velocity we travel forwards and returns this request for method chaining.
+        
+        :param velocity_x: The velocity we travel forwards
+        :type velocity_x: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.velocity_x = velocity_x
+        return self
+    
+    def with_translation_pid(self, p: float, i: float, d: float) -> Self:
+        """
+        Modifies the translation PID gains and returns this request for method chaining.
+        
+        :param p: The proportional gain
+        :type p: float
+        :param i: The integral gain
+        :type i: float
+        :param d: The derivative gain
+        :type d: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.translation_y_controller.setPID(p, i, d)
+        return self
+    
+    def with_heading_pid(self, p: float, i: float, d: float) -> Self:
+        """
+        Modifies the heading PID gains and returns this request for method chaining.
+        
+        :param p: The proportional gain
+        :type p: float
+        :param i: The integral gain
+        :type i: float
+        :param d: The derivative gain
+        :type d: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.heading_controller.setPID(p, i, d)
+        return self
+    
+    def with_velocity_deadband(self, deadband: float) -> Self:
+        """
+        Modifies the velocity deadband and returns this request for method chaining.
+        
+        :param deadband: The velocity deadband
+        :type deadband: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.velocity_deadband = deadband
+        return self
+    
+    def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
+        """
+        Applies the control request.
+
+        :param parameters: Parameters we need to control the swerve drive (module locations, current speeds, etc.)
+        :type parameters: SwerveControlParameters
+        :param modules: The list of modules to apply the request to
+        :type modules: list[SwerveModule]
+        :returns: Status code (OK if successful, otherwise a warning or error code)
+        :rtype: StatusCode
+        """
+        
+        # Our current pose
+        current_pose = parameters.current_pose
+
+        # Find nearest pose based on our current alliance and desired direction
+        if DriverStation.getAlliance() == DriverStation.Alliance.kBlue and self.direction == DriverAssist.BranchSide.LEFT:
+            self._target_pose = min(self._blue_branch_left_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+        
+        elif DriverStation.getAlliance() == DriverStation.Alliance.kBlue and self.direction == DriverAssist.BranchSide.RIGHT:
+            self._target_pose = min(self._blue_branch_right_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+
+        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed and self.direction == DriverAssist.BranchSide.LEFT:
+            self._target_pose = min(self._red_branch_left_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+
+        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed and self.direction == DriverAssist.BranchSide.RIGHT:
+            self._target_pose = min(self._red_branch_right_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+
+        # THIS IS NOT DONE!
+
+    def getDistanceToLine(self, robotPose: Pose2d, targetPose: Pose2d):
+        """
+        Given the target pose, as well as the current robot pose, find the distance from the robot to the line emanating from the target pose.
+        """
+
+        # To accomplish this, we need to find the intersection point of the line 
+        # emanating from the target pose and the line perpendicular to it that passes through the robot pose.
+        # If theta is the target rotation, tan(theta) is the slope of the line from the pose. We can just call that S for the sake of solving this.
+        # Where S is the slope, (t_x, t_y) is the target position, and (r_x, r_y) is the robot position:
+        # S(x - t_x) + t_y = -1/S(x - r_x) + r_y
+        # Sx - St_x + t_y = -x/S + r_x/S + r_y
+        # Sx - St_x + t_y - r_y = (r_x - x)/S
+        # S^2x - S^2t_x + St_y - Sr_y = r_x - x
+        # S^2x + x = r_x + S^2t_x - St_y + Sr_y
+        # x(S^2 + 1) = r_x + S^2t_x - St_y + Sr_y
+        # x = (r_x + S^2t_x - St_y + Sr_y)/(S^2 + 1)
+        # We can then plug in x into our first equation to find y. This will give us the intersection point, which is the pose we want to find distance to.
+
+        slope = math.tan(targetPose.rotation().radians())
+        
+        x = (robotPose.X() + slope**2 * targetPose.X() - slope * targetPose.Y() + slope * robotPose.Y()) / (slope**2 + 1)
+        y = slope * (x - targetPose.X()) + targetPose.Y()
+
+        pose = Pose2d(x, y, targetPose.rotation())
+
+        return math.sqrt((pose.X() - robotPose.X())**2 + (pose.Y() - robotPose.Y())**2)

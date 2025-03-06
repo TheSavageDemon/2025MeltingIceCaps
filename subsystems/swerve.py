@@ -33,6 +33,8 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
     _MAX_STEERING_VELOCITY: units.radians_per_second = rotationsToRadians(15)
 
+    _MAX_DISTANCE_FROM_TARGET: units.meter = 69 #Placeholder value
+
     @overload
     def __init__(
             self,
@@ -379,7 +381,7 @@ class DriverAssist(SwerveRequest):
     ]
 
     def __init__(self) -> None:
-        
+
         # Direction we go to (this will be determined by the bumper we press)
         self.direction = DriverAssist.BranchSide.LEFT
 
@@ -497,19 +499,35 @@ class DriverAssist(SwerveRequest):
         current_pose = parameters.current_pose
 
         # Find nearest pose based on our current alliance and desired direction
-        if DriverStation.getAlliance() == DriverStation.Alliance.kBlue and self.direction == DriverAssist.BranchSide.LEFT:
-            self._target_pose = min(self._blue_branch_left_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
-        
-        elif DriverStation.getAlliance() == DriverStation.Alliance.kBlue and self.direction == DriverAssist.BranchSide.RIGHT:
-            self._target_pose = min(self._blue_branch_right_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
 
-        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed and self.direction == DriverAssist.BranchSide.LEFT:
-            self._target_pose = min(self._red_branch_left_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+        if DriverStation.getAlliance() == DriverStation.Alliance.kBlue:
+            
+            if self.direction == DriverAssist.BranchSide.LEFT:
+                self._target_pose = self.findClosestPose(current_pose, self._blue_branch_left_targets) 
+            else:
+                self._target_pose = self.findClosestPose(current_pose, self._blue_branch_right_targets)
 
-        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed and self.direction == DriverAssist.BranchSide.RIGHT:
-            self._target_pose = min(self._red_branch_right_targets, key=lambda pose: self.getDistanceToLine(current_pose, pose))
+        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed:
+            
+            if self.direction == DriverAssist.BranchSide.LEFT:
+                self._target_pose = self.findClosestPose(current_pose, self._red_branch_left_targets) 
+            else:
+                self._target_pose = self.findClosestPose(current_pose, self._red_branch_right_targets)
 
-        # THIS IS NOT DONE!
+        rotation_amount = self.heading_controller.calculate(current_pose.rotation().degrees(), self._target_pose.rotation().degrees(), parameters.timestamp)
+
+        return (
+            self._field_centric
+            .with_velocity_x(0)
+            .with_velocity_y(0)
+            .with_rotational_rate(rotation_amount)
+            .with_deadband(self.velocity_deadband)
+            .with_drive_request_type(self.drive_request_type)
+            .with_steer_request_type(self.steer_request_type)
+            .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
+            .with_forward_perspective(self.forward_perspective)
+            .apply(parameters, modules)
+        )
 
     def getDistanceToLine(self, robotPose: Pose2d, targetPose: Pose2d):
         """
@@ -537,3 +555,21 @@ class DriverAssist(SwerveRequest):
         pose = Pose2d(x, y, targetPose.rotation())
 
         return math.sqrt((pose.X() - robotPose.X())**2 + (pose.Y() - robotPose.Y())**2)
+    
+    def findClosestPose(self, robotPose: Pose2d, listOfPoses: list[Pose2d]) -> Pose2d:
+        """
+        Given a list of poses, find the pose that is closest to the robot pose.
+        """
+
+        closestPose = Pose2d(math.inf, math.inf, Rotation2d.fromDegrees(0))
+        closestDistance = math.inf
+
+        for pose in listOfPoses:
+            poseDistance = self.getDistanceToLine(robotPose, pose)
+            if poseDistance < closestDistance:
+                closestPose = pose
+                closestDistance = poseDistance
+        
+        return closestPose
+
+

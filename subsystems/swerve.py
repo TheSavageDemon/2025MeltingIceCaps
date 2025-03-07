@@ -9,10 +9,10 @@ from pathplannerlib.auto import AutoBuilder, RobotConfig
 from pathplannerlib.controller import PIDConstants, PPHolonomicDriveController
 from phoenix6 import swerve, units, utils, SignalLogger, StatusCode
 from phoenix6.swerve import SwerveModule
-from phoenix6.swerve.requests import ApplyRobotSpeeds, SwerveRequest, ForwardPerspectiveValue, FieldCentric
+from phoenix6.swerve.requests import ApplyRobotSpeeds, SwerveRequest, ForwardPerspectiveValue, FieldCentricFacingAngle
 from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT, SwerveControlParameters
 from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
-from wpilib import DriverStation, Notifier, RobotController
+from wpilib import DriverStation, Notifier, RobotController, SmartDashboard
 from wpilib.sysid import SysIdRoutineLog
 from wpimath.geometry import Rotation2d, Pose2d
 from wpimath.units import rotationsToRadians, degreesToRadians
@@ -352,7 +352,7 @@ class DriverAssist(SwerveRequest):
         Pose2d(5.850, 3.851, degreesToRadians(180)), # G
         Pose2d(5.347, 5.134, degreesToRadians(240)), # I
         Pose2d(3.932, 5.302, degreesToRadians(300)), # K
-    ]
+    ] #4.4705
 
     _blue_branch_right_targets = [
         Pose2d(3.091, 3.863, degreesToRadians(0)), # B
@@ -361,7 +361,7 @@ class DriverAssist(SwerveRequest):
         Pose2d(5.862, 4.187, degreesToRadians(180)), # H
         Pose2d(5.047, 5.290, degreesToRadians(240)), # J
         Pose2d(3.668, 5.110, degreesToRadians(300)), # L
-    ]
+    ] #4.4765
 
     # To find the poses on the red side of the reef, we mirror each pose and rotate by 180 degrees.
     _red_branch_left_targets = [
@@ -387,10 +387,10 @@ class DriverAssist(SwerveRequest):
 
         # velocity_x (forward) determined by driver
         self.velocity_x = 0
+        self.velocity_y = 0
 
         # PID controllers for the y (left) and heading (rotating)
         self.translation_y_controller = PhoenixPIDController(0.0, 0.0, 0.0)
-        self.heading_controller = PhoenixPIDController(0.0, 0.0, 0.0)
 
         # The deadband on our velocity forward that the driver controls
         self.velocity_deadband = 0
@@ -408,7 +408,9 @@ class DriverAssist(SwerveRequest):
 
         # The pose we want to travel to
         self._target_pose = Pose2d()
-        self._field_centric = FieldCentric()
+        self._field_centric_facing_angle = FieldCentricFacingAngle()
+
+        self.heading_controller = self._field_centric_facing_angle.heading_controller
     
     def with_direction(self, direction) -> Self:
         """
@@ -434,6 +436,19 @@ class DriverAssist(SwerveRequest):
         """
 
         self.velocity_x = velocity_x
+        return self
+    
+    def with_velocity_y(self, velocity_y) -> Self:
+        """
+        Modifies the velocity we travel right and returns this request for method chaining.
+
+        :param velocity_y: The velocity we travel right
+        :type velocity_y: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.velocity_y = velocity_y
         return self
     
     def with_translation_pid(self, p: float, i: float, d: float) -> Self:
@@ -514,13 +529,19 @@ class DriverAssist(SwerveRequest):
             else:
                 self._target_pose = self.findClosestPose(current_pose, self._red_branch_right_targets)
 
-        rotation_amount = self.heading_controller.calculate(current_pose.rotation().degrees(), self._target_pose.rotation().degrees(), parameters.timestamp)
+        # find the speeds we need.
+        # the velocities are really the *commanded* speed from the driver, it's not necessarily the velocity we'll travel at.
+        # what we really need is the component in the direction of our pose
+        speed = self.velocity_y / math.sin(self._target_pose.rotation().radians())
+
+        # we have the speed, now we can use the angle we already know (the angle of the target)
 
         return (
-            self._field_centric
+            self._field_centric_facing_angle
             .with_velocity_x(0)
             .with_velocity_y(0)
-            .with_rotational_rate(rotation_amount)
+            .with_target_direction(self._target_pose.rotation())
+            .with_heading_pid(50, 0, 0)
             .with_deadband(self.velocity_deadband)
             .with_drive_request_type(self.drive_request_type)
             .with_steer_request_type(self.steer_request_type)
@@ -552,9 +573,17 @@ class DriverAssist(SwerveRequest):
         x = (robotPose.X() + slope**2 * targetPose.X() - slope * targetPose.Y() + slope * robotPose.Y()) / (slope**2 + 1)
         y = slope * (x - targetPose.X()) + targetPose.Y()
 
-        pose = Pose2d(x, y, targetPose.rotation())
+        # this is a possible pose. if it's on the wrong side of the reef it's a false pose.
+        possible_pose = Pose2d(x, y, targetPose.rotation())
 
-        return math.sqrt((pose.X() - robotPose.X())**2 + (pose.Y() - robotPose.Y())**2)
+        reefX = 4.4735 if DriverStation.getAlliance() == DriverStation.Alliance.kBlue else Constants.FIELD_LAYOUT.getFieldLength() - 4.4735
+
+        # here we check if the reef pose is on the same side as our possible pose. if it is, we return the distance between the robot and the possible pose.
+        if (targetPose.X() - reefX <= 0) == (x - reefX <= 0):
+            return math.sqrt((possible_pose.X() - robotPose.X())**2 + (possible_pose.Y() - robotPose.Y())**2)
+        
+        else:
+            return math.inf
     
     def findClosestPose(self, robotPose: Pose2d, listOfPoses: list[Pose2d]) -> Pose2d:
         """

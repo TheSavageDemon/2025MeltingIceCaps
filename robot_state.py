@@ -50,6 +50,10 @@ class RobotState(Subsystem):
         if utils.is_simulation():
             self._setup_simulation_mechanisms()
 
+    def getField(self) -> Field2d:
+
+        return self._field
+
     def _setup_simulation_mechanisms(self):
         self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
         self._superstructure_root = self._superstructure_mechanism.getRoot("Root", 1 / 2, 0.125)

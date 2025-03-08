@@ -132,7 +132,7 @@ class RobotContainer:
         
         Trigger(lambda: hid.getRightTriggerAxis() >= 0.75).whileTrue(
             self.drivetrain.apply_request(
-                lambda: self.robot_centric
+                lambda: self._robot_centric
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
                 .with_velocity_y(-hid.getLeftX() * self._max_speed)
                 .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
@@ -148,7 +148,7 @@ class RobotContainer:
                                           .with_velocity_y(-hid.getLeftX())
                                           .with_max_speed(self._max_speed)
                                           .with_translation_pid(4, 0, 0)
-                                          .with_heading_pid(0.5, 0, 0)
+                                          .with_heading_pid(10, 0, 0)
                                           .with_velocity_deadband(0.05)
                                           )
         )
@@ -162,7 +162,7 @@ class RobotContainer:
                                           .with_velocity_y(-hid.getLeftX())
                                           .with_max_speed(self._max_speed)
                                           .with_translation_pid(4, 0, 0)
-                                          .with_heading_pid(0.5, 0, 0)
+                                          .with_heading_pid(10, 0, 0)
                                           .with_velocity_deadband(0.05)
                                           )
         )

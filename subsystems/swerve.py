@@ -590,7 +590,6 @@ class DriverAssist(SwerveRequest):
             .with_velocity_x(field_relative_velocity.X())
             .with_velocity_y(field_relative_velocity.Y())
             .with_target_direction(target_direction)
-            .with_heading_pid(20, 0, 0)
             .with_deadband(self.velocity_deadband)
             .with_drive_request_type(self.drive_request_type)
             .with_steer_request_type(self.steer_request_type)

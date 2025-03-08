@@ -1,5 +1,7 @@
 import math
 from typing import Callable, overload, Self
+
+from ntcore import NetworkTableInstance
 from constants import Constants
 
 from commands2 import Command, Subsystem
@@ -12,9 +14,9 @@ from phoenix6.swerve import SwerveModule
 from phoenix6.swerve.requests import ApplyRobotSpeeds, SwerveRequest, ForwardPerspectiveValue, FieldCentricFacingAngle
 from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT, SwerveControlParameters
 from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
-from wpilib import DriverStation, Notifier, RobotController, SmartDashboard
+from wpilib import DriverStation, Notifier, RobotController
 from wpilib.sysid import SysIdRoutineLog
-from wpimath.geometry import Rotation2d, Pose2d
+from wpimath.geometry import Rotation2d, Pose2d, Translation2d
 from wpimath.units import rotationsToRadians, degreesToRadians
 
 
@@ -368,7 +370,7 @@ class DriverAssist(SwerveRequest):
        Pose2d(
            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation() + Rotation2d.fromDegrees(180)
+           pose.rotation()
        ) for pose in _blue_branch_left_targets
     ]
 
@@ -376,18 +378,20 @@ class DriverAssist(SwerveRequest):
        Pose2d(
            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation() + Rotation2d.fromDegrees(180)
+           pose.rotation()
        ) for pose in _blue_branch_right_targets
     ]
 
     def __init__(self) -> None:
 
         # Direction we go to (this will be determined by the bumper we press)
-        self.direction = DriverAssist.BranchSide.LEFT
+        self.branch_side = DriverAssist.BranchSide.LEFT
 
         # velocity_x (forward) determined by driver
         self.velocity_x = 0
         self.velocity_y = 0
+
+        self.max_speed = 0
 
         # PID controllers for the y (left) and heading (rotating)
         self.translation_y_controller = PhoenixPIDController(0.0, 0.0, 0.0)
@@ -411,8 +415,11 @@ class DriverAssist(SwerveRequest):
         self._field_centric_facing_angle = FieldCentricFacingAngle()
 
         self.heading_controller = self._field_centric_facing_angle.heading_controller
+
+        self._target_pose_pub = NetworkTableInstance.getDefault().getTable("I'm Jaking It").getStructTopic("Target Pose", Pose2d).publish()
+        self._horizontal_velocity_pub = NetworkTableInstance.getDefault().getTable("I'm Jaking It").getDoubleTopic("Horizontal Velocity").publish()
     
-    def with_direction(self, direction) -> Self:
+    def with_branch_side(self, branch_side) -> Self:
         """
         Modifies the direction we target and returns this request for method chaining.
 
@@ -422,7 +429,7 @@ class DriverAssist(SwerveRequest):
         :rtype: DriverAssist
         """
 
-        self.direction = direction
+        self.branch_side = branch_side
         return self
 
     def with_velocity_x(self, velocity_x) -> Self:
@@ -451,6 +458,19 @@ class DriverAssist(SwerveRequest):
         self.velocity_y = velocity_y
         return self
     
+    def with_max_speed(self, max_speed) -> Self:
+        """
+        Modifies the max speed we can travel at and returns this request for method chaining.
+
+        :param max_speed: The max speed we can travel at
+        :type max_speed: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.max_speed = max_speed
+        return self
+
     def with_translation_pid(self, p: float, i: float, d: float) -> Self:
         """
         Modifies the translation PID gains and returns this request for method chaining.
@@ -517,31 +537,48 @@ class DriverAssist(SwerveRequest):
 
         if DriverStation.getAlliance() == DriverStation.Alliance.kBlue:
             
-            if self.direction == DriverAssist.BranchSide.LEFT:
+            if self.branch_side == DriverAssist.BranchSide.LEFT:
                 self._target_pose = self.findClosestPose(current_pose, self._blue_branch_left_targets) 
             else:
                 self._target_pose = self.findClosestPose(current_pose, self._blue_branch_right_targets)
 
         elif DriverStation.getAlliance() == DriverStation.Alliance.kRed:
             
-            if self.direction == DriverAssist.BranchSide.LEFT:
-                self._target_pose = self.findClosestPose(current_pose, self._red_branch_left_targets) 
+            if self.branch_side == DriverAssist.BranchSide.LEFT:
+                self._target_pose = self.findClosestPose(current_pose, self._red_branch_left_targets)
             else:
                 self._target_pose = self.findClosestPose(current_pose, self._red_branch_right_targets)
 
-        # find the speeds we need.
-        # the velocities are really the *commanded* speed from the driver, it's not necessarily the velocity we'll travel at.
-        # what we really need is the component in the direction of our pose
-        speed = self.velocity_y / math.sin(self._target_pose.rotation().radians())
+        self._target_pose_pub.set(self._target_pose)
 
-        # we have the speed, now we can use the angle we already know (the angle of the target)
+        target_direction = self._target_pose.rotation()
+
+        # New X and Y axis in the direction of the target pose
+        rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
+
+        # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
+        velocity_towards_pose = rotated_coordinate.X() * self.max_speed
+
+
+        # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
+
+        rotated_current_pose = current_pose.rotateBy(-target_direction)
+        rotated_target_pose = self._target_pose.rotateBy(-target_direction)
+
+        # Find horizontal velocity (relative to pose) using our PID controller
+        
+        horizontal_velocity = -self.translation_y_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
+        self._horizontal_velocity_pub.set(horizontal_velocity)
+
+        # Take these velocities and rotate it back into the field coordinate system
+        field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
 
         return (
             self._field_centric_facing_angle
-            .with_velocity_x(0)
-            .with_velocity_y(0)
-            .with_target_direction(self._target_pose.rotation())
-            .with_heading_pid(50, 0, 0)
+            .with_velocity_x(field_relative_velocity.X())
+            .with_velocity_y(field_relative_velocity.Y())
+            .with_target_direction(target_direction)
+            .with_heading_pid(20, 0, 0)
             .with_deadband(self.velocity_deadband)
             .with_drive_request_type(self.drive_request_type)
             .with_steer_request_type(self.steer_request_type)

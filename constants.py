@@ -157,3 +157,10 @@ class Constants:
 
         SUPPLY_CURRENT = 20
         STATOR_CURRENT = 50
+
+    class AutoAlignConstants:
+
+        MAX_DISTANCE = 3.6343
+        TRANSLATION_PID = (2, 0, 0)
+        HEADING_PID  = (10, 0, 0)
+        VELOCITY_DEADBAND = 0.05

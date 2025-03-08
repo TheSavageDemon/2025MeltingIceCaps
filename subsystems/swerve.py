@@ -438,8 +438,10 @@ class DriverAssist(SwerveRequest):
         # velocity determined by driver
         self.velocity_x = 0
         self.velocity_y = 0
+        self.rotational_rate = 0
 
         self.max_speed = 0
+        self.max_angular_rate = 0
 
         # PID controllers for the y (left) and heading (rotating)
         self.translation_y_controller = PhoenixPIDController(0.0, 0.0, 0.0)
@@ -558,52 +560,54 @@ class DriverAssist(SwerveRequest):
 
         self._target_pose_pub.set(self._target_pose)
 
-        # if self.getDistanceToPose(current_pose, self._target_pose) <= self.max_distance:
+        if self.getDistanceToPose(current_pose, self._target_pose) <= self.max_distance:
 
-        target_direction = self._target_pose.rotation()
+            target_direction = self._target_pose.rotation()
 
-        # New X and Y axis in the direction of the target pose
-        rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
+            # New X and Y axis in the direction of the target pose
+            rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
 
-        # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
-        velocity_towards_pose = rotated_coordinate.X() * self.max_speed
+            # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
+            velocity_towards_pose = rotated_coordinate.X() * self.max_speed
 
 
-        # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
+            # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
 
-        rotated_current_pose = current_pose.rotateBy(-target_direction)
-        rotated_target_pose = self._target_pose.rotateBy(-target_direction)
+            rotated_current_pose = current_pose.rotateBy(-target_direction)
+            rotated_target_pose = self._target_pose.rotateBy(-target_direction)
 
-        # Find horizontal velocity (relative to pose) using our PID controller
-        
-        horizontal_velocity = self.translation_y_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
-        
-        if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
-            horizontal_velocity *= -1
-        
-        self._horizontal_velocity_pub.set(horizontal_velocity)
-
-        # Take these velocities and rotate it back into the field coordinate system
-        field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
-
-        return (
-            self._field_centric_facing_angle
-            .with_velocity_x(field_relative_velocity.X())
-            .with_velocity_y(field_relative_velocity.Y())
-            .with_target_direction(target_direction)
-            .with_heading_pid(20, 0, 0)
-            .with_deadband(self.velocity_deadband)
-            .with_drive_request_type(self.drive_request_type)
-            .with_steer_request_type(self.steer_request_type)
-            .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
-            .with_forward_perspective(self.forward_perspective)
-            .apply(parameters, modules)
-        )
-        
-        # else:
+            # Find horizontal velocity (relative to pose) using our PID controller
             
-        #     return FieldCentric().apply(parameters, modules)
-        #     return self.fallback.apply(parameters, modules) this doesn't work :(
+            horizontal_velocity = self.translation_y_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
+            
+            if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
+                horizontal_velocity *= -1
+            
+            self._horizontal_velocity_pub.set(horizontal_velocity)
+
+            # Take these velocities and rotate it back into the field coordinate system
+            field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
+
+            return (
+                self._field_centric_facing_angle
+                .with_velocity_x(field_relative_velocity.X())
+                .with_velocity_y(field_relative_velocity.Y())
+                .with_target_direction(target_direction)
+                .with_deadband(self.velocity_deadband)
+                .with_drive_request_type(self.drive_request_type)
+                .with_steer_request_type(self.steer_request_type)
+                .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
+                .with_forward_perspective(self.forward_perspective)
+                .apply(parameters, modules)
+            )
+        
+        else:
+
+            return (self.fallback
+            .with_velocity_x(self.velocity_x * self.max_speed)
+            .with_velocity_y(self.velocity_y * self.max_speed)
+            .with_rotational_rate(self.rotational_rate * self.max_angular_rate)
+            .apply(parameters, modules))
 
     def with_fallback(self, fallback) -> Self:
         """
@@ -671,6 +675,19 @@ class DriverAssist(SwerveRequest):
         self.velocity_y = velocity_y
         return self
     
+    def with_rotational_rate(self, rotational_rate) -> Self:
+        """
+        Modifies the angular velocity we travel at and returns this request for method chaining.
+
+        :param rotational_rate: The angular velocity we travel at
+        :type rotational_rate: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.rotational_rate = rotational_rate
+        return self
+
     def with_max_speed(self, max_speed) -> Self:
         """
         Modifies the max speed we can travel at and returns this request for method chaining.
@@ -682,6 +699,19 @@ class DriverAssist(SwerveRequest):
         """
 
         self.max_speed = max_speed
+        return self
+    
+    def with_max_angular_rate(self, max_angular_rate) -> Self:
+        """
+        Modifies the max angular rate we can travel at and returns this request for method chaining.
+
+        :param max_angular_rate: The max angular rate we can travel at
+        :type max_angular_rate: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.max_angular_rate = max_angular_rate
         return self
 
     def with_translation_pid(self, p: float, i: float, d: float) -> Self:

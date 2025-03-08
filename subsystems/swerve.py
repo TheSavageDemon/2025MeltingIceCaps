@@ -592,7 +592,7 @@ class DriverAssist(SwerveRequest):
                 self._field_centric_facing_angle
                 .with_velocity_x(field_relative_velocity.X())
                 .with_velocity_y(field_relative_velocity.Y())
-                .with_target_direction(target_direction)
+                .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
                 .with_deadband(self.velocity_deadband)
                 .with_drive_request_type(self.drive_request_type)
                 .with_steer_request_type(self.steer_request_type)

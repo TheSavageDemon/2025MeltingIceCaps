@@ -161,6 +161,15 @@ class Constants:
     class AutoAlignConstants:
 
         MAX_DISTANCE = 3.6343
-        TRANSLATION_PID = (2, 0, 0)
-        HEADING_PID  = (10, 0, 0)
+        
+        TRANSLATION_P = 1
+        TRANSLATION_I = 0
+        TRANSLATION_D = 0
+        
+        HEADING_P = 7
+        HEADING_I = 0
+        HEADING_D = 0
+        
+        HEADING_TOLERANCE = 5
+
         VELOCITY_DEADBAND = 0.05

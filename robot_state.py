@@ -4,15 +4,17 @@ from wpimath import units
 
 from subsystems import StateSubsystem
 from subsystems.elevator import ElevatorSubsystem
+from subsystems.intake import IntakeSubsystem
 from subsystems.pivot import PivotSubsystem
 
 class RobotState:
     """Singleton for getting subsystem positions and measurements. Handles all subsystem "communication"."""
     _instance = None
 
-    def __new__(cls, pivot: PivotSubsystem, elevator: ElevatorSubsystem):
+    def __new__(cls, intake: IntakeSubsystem, pivot: PivotSubsystem, elevator: ElevatorSubsystem):
         if cls._instance is None:
             cls._instance = super(RobotState, cls).__new__(cls)
+            cls._instance._intake = intake
             cls._instance._pivot = pivot
             cls._instance._elevator = elevator
         return cls._instance
@@ -24,9 +26,9 @@ class RobotState:
             raise RuntimeError("RobotState has not been initialized.")
         return cls._instance
 
-    def get_pivot_angle(self) -> units.degrees:
-        """:returns: The pivot position, in degrees. An angle of 0 means the pivot is fully extended horizontally."""
-        return self._pivot.get_angle()
+    def get_pivot_position(self) -> units.degrees:
+        """:returns: The pivot position, in rotations. An position of 0 means the pivot is fully extended horizontally."""
+        return self._pivot.get_position()
 
     def get_pivot_state(self) -> StateSubsystem.SubsystemState:
         """:returns: the current state of the pivot."""
@@ -43,3 +45,6 @@ class RobotState:
     def get_elevator_state(self) -> StateSubsystem.SubsystemState:
         """:returns: the current state of the elevator."""
         return self._elevator.get_current_state()
+    
+    def has_coral(self) -> bool:
+        return self._intake.has_coral()

@@ -6,7 +6,7 @@ from phoenix6 import SignalLogger, utils, BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration, CANcoderConfiguration, MotionMagicConfigs
 from phoenix6.controls import VoltageOut, Follower, MotionMagicVoltage
 from phoenix6.hardware import CANcoder, TalonFX
-from phoenix6.signals import InvertedValue, FeedbackSensorSourceValue, NeutralModeValue
+from phoenix6.signals import InvertedValue, FeedbackSensorSourceValue, NeutralModeValue, ForwardLimitValue
 from phoenix6.sim import ChassisReference
 from wpilib import DriverStation, RobotBase, RobotController
 from wpilib.sysid import SysIdRoutineLog
@@ -171,6 +171,6 @@ class PivotSubsystem(StateSubsystem):
     def sys_id_dynamic(self, direction: SysIdRoutine.Direction) -> Command:
         return self._sys_id_routine.dynamic(direction).andThen(self.stop())
 
-    def get_angle(self) -> float:
+    def get_position(self) -> float:
         """Returns the current angle of the pivot, in degrees."""
-        return self._master_motor.get_position().value * 360
+        return self._master_motor.get_position().value

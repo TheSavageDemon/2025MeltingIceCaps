@@ -38,7 +38,7 @@ class Constants:
         SERVO_DISENGAGED_ANGLE = 90
 
     class ElevatorConstants:
-        L1_SCORE_POSITION = 0.690674
+        L1_SCORE_POSITION = 2.208
         L2_SCORE_POSITION = 1.841
         L3_SCORE_POSITION = 3.576
         L4_SCORE_POSITION = 6.087158
@@ -50,7 +50,8 @@ class Constants:
         DEFAULT_POSITION = 0
 
         CRUISE_VELOCITY = 8
-        MM_UPWARD_ACCELERATION = 24
+        MM_UPWARD_ACCELERATION = 48
+        MM_BRAKE_ACCELERATION = 24
         MM_DOWNWARD_ACCELERATION = 12
         EXPO_K_V = 10
         EXPO_K_A = 4
@@ -78,7 +79,7 @@ class Constants:
         ALGAE_INTAKE_ANGLE = -0.033
         HIGH_SCORING_ANGLE =  0.262
         MID_SCORING_ANGLE = 0.262
-        LOW_SCORING_ANGLE = 0.338379
+        LOW_SCORING_ANGLE = -0.077
         NET_SCORING_ANGLE = 0.123535
         PROCESSOR_SCORING_ANGLE = 0.004639
         CLIMBER_PRIORITY_ANGLE = 0.201943

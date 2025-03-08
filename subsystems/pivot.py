@@ -32,7 +32,8 @@ class PivotSubsystem(StateSubsystem):
         FUNNEL_INTAKE = auto()
         ALGAE_INTAKE = auto()
         HIGH_SCORING = auto()
-        MID_SCORING = auto()
+        L3_CORAL = auto()
+        L2_CORAL = auto()
         LOW_SCORING = auto()
         NET_SCORING = auto()
         PROCESSOR_SCORING = auto()
@@ -46,7 +47,8 @@ class PivotSubsystem(StateSubsystem):
         SubsystemState.FUNNEL_INTAKE: Constants.PivotConstants.FUNNEL_INTAKE_ANGLE,
         SubsystemState.ALGAE_INTAKE: Constants.PivotConstants.ALGAE_INTAKE_ANGLE,
         SubsystemState.HIGH_SCORING: Constants.PivotConstants.HIGH_SCORING_ANGLE,
-        SubsystemState.MID_SCORING: Constants.PivotConstants.MID_SCORING_ANGLE,
+        SubsystemState.L3_CORAL: Constants.PivotConstants.MID_SCORING_ANGLE,
+        SubsystemState.L2_CORAL: Constants.PivotConstants.MID_SCORING_ANGLE,
         SubsystemState.LOW_SCORING: Constants.PivotConstants.LOW_SCORING_ANGLE,
         SubsystemState.NET_SCORING: Constants.PivotConstants.NET_SCORING_ANGLE,
         SubsystemState.PROCESSOR_SCORING: Constants.PivotConstants.PROCESSOR_SCORING_ANGLE,
@@ -152,8 +154,13 @@ class PivotSubsystem(StateSubsystem):
     def is_at_setpoint(self) -> bool:
         return self._at_setpoint
 
-    def is_in_elevator(self) -> bool:
-        return self._master_motor.get_position(True).value >= Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
+    def is_in_elevator(self, position=None) -> bool:
+        if not position:
+            position = self._master_motor.get_position(True).value
+        return position >= Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
+    
+    def get_setpoint(self) -> float:
+        return self._position_request.position
 
     def stop(self) -> Command:
         return self.runOnce(lambda: self._master_motor.set_control(self._sys_id_request.with_output(0)))

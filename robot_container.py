@@ -130,28 +130,20 @@ class RobotContainer:
             )
         )
 
-        # self._driver_controller.rightBumper().whileTrue(
-        #     self.drivetrain.apply_request(
-        #         lambda: self._robot_centric
-        #         .with_velocity_x(-hid.getLeftY() * self._max_speed)
-        #         .with_velocity_y(-hid.getLeftX() * self._max_speed)
-        #         .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
-        #     )
-        # )
-        self._driver_controller.rightBumper().whileTrue(
-            self.drivetrain.apply_request(lambda: DriverAssist()
-                                          .with_branch_side(DriverAssist.BranchSide.RIGHT)
-                                          .with_velocity_x(-hid.getLeftY())
-                                          .with_velocity_y(-hid.getLeftX())
-                                          .with_max_speed(self._max_speed)
-                                          .with_translation_pid(2, 0, 0)
-                                          .with_heading_pid(0.25, 0, 0)
-                                          .with_velocity_deadband(0.05)
-                                          )
-        )
+        commands2.button.Trigger(lambda: self._driver_controller.getRightTriggerAxis() > 0.75).whileTrue(
+            self.drivetrain.apply_request(
+                lambda: self._robot_centric
+                .with_velocity_x(-hid.getLeftY() * self._max_speed)
+                .with_velocity_y(-hid.getLeftX() * self._max_speed)
+                .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
+            )
+         )
+
         self._driver_controller.leftBumper().whileTrue(
             self.drivetrain.apply_request(lambda: DriverAssist()
+                                          .with_fallback(lambda: self._field_centric)
                                           .with_branch_side(DriverAssist.BranchSide.LEFT)
+                                          .with_max_distance(3.6343)
                                           .with_velocity_x(-hid.getLeftY())
                                           .with_velocity_y(-hid.getLeftX())
                                           .with_max_speed(self._max_speed)
@@ -161,6 +153,19 @@ class RobotContainer:
                                           )
         )
 
+        self._driver_controller.rightBumper().whileTrue(
+            self.drivetrain.apply_request(lambda: DriverAssist()
+                                          .with_fallback(lambda: self._field_centric)
+                                          .with_branch_side(DriverAssist.BranchSide.RIGHT)
+                                          .with_max_distance(3.6343)
+                                          .with_velocity_x(-hid.getLeftY())
+                                          .with_velocity_y(-hid.getLeftX())
+                                          .with_max_speed(self._max_speed)
+                                          .with_translation_pid(2, 0, 0)
+                                          .with_heading_pid(0.25, 0, 0)
+                                          .with_velocity_deadband(0.05)
+                                          )
+        )
 
         self._driver_controller.a().whileTrue(self.drivetrain.apply_request(lambda: self._brake))
         self._driver_controller.b().whileTrue(
@@ -169,7 +174,7 @@ class RobotContainer:
             )
         )
 
-        # self._driver_controller.leftBumper().onTrue(self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric()))
+        self._driver_controller.x().onTrue(self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric()))
 
         self._setup_sysid_bindings(
             self._driver_controller, self.drivetrain,

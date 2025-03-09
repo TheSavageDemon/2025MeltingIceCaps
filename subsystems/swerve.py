@@ -447,6 +447,9 @@ class DriverAssist(SwerveRequest):
         # The deadband on our velocity forward that the driver controls
         self.velocity_deadband = 0
 
+        # The deadband on our rotational velocity
+        self.rotational_deadband = 0
+
         # Our request types for the drive and steer motors respectively
         self.drive_request_type = SwerveModule.DriveRequestType.VELOCITY
         self.steer_request_type = SwerveModule.SteerRequestType.POSITION
@@ -567,7 +570,6 @@ class DriverAssist(SwerveRequest):
             # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
             velocity_towards_pose = rotated_coordinate.X() * self.max_speed
 
-
             # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
 
             rotated_current_pose = current_pose.rotateBy(-target_direction)
@@ -591,6 +593,7 @@ class DriverAssist(SwerveRequest):
                 .with_velocity_y(field_relative_velocity.Y())
                 .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
                 .with_deadband(self.velocity_deadband)
+                .with_rotational_deadband(self.rotational_deadband)
                 .with_drive_request_type(self.drive_request_type)
                 .with_steer_request_type(self.steer_request_type)
                 .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
@@ -756,4 +759,17 @@ class DriverAssist(SwerveRequest):
         """
 
         self.velocity_deadband = deadband
+        return self
+
+    def with_rotational_deadband(self, rotational_deadband: float) -> Self:
+        """
+        Modifies the rotational deadband and returns this request for method chaining.
+
+        :param rotational_deadband: The rotational deadband
+        :type rotational_deadband: float
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.rotational_deadband = rotational_deadband
         return self

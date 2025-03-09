@@ -1,27 +1,27 @@
-from enum import Enum, auto
 import math
+from enum import Enum, auto
 from typing import Callable, overload, Self
 
 from commands2 import Command, Subsystem
 from commands2.sysid import SysIdRoutine
-from phoenix6.units import *
-
-from constants import Constants
 from ntcore import NetworkTableInstance
 from pathplannerlib.auto import AutoBuilder, RobotConfig
 from pathplannerlib.controller import PIDConstants, PPHolonomicDriveController
 from pathplannerlib.logging import PathPlannerLogging
 from phoenix6 import swerve, units, utils, SignalLogger, StatusCode
-from phoenix6.swerve import SwerveModule, SwerveDrivetrain
+from phoenix6.swerve import SwerveModule
 from phoenix6.swerve.requests import ApplyRobotSpeeds, SwerveRequest, FieldCentric, FieldCentricFacingAngle, ForwardPerspectiveValue
 from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT, SwerveControlParameters
 from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
+from phoenix6.units import *
 from wpilib import DriverStation, Notifier, RobotController, Field2d, SmartDashboard
 from wpilib.sysid import SysIdRoutineLog
 from wpimath.geometry import Rotation2d, Pose2d, Translation2d
 from wpimath.kinematics import ChassisSpeeds, SwerveModuleState
 from wpimath.units import degreesToRadians
 from wpiutil import Sendable, SendableBuilder
+
+from constants import Constants
 
 
 class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
@@ -39,12 +39,12 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
     @overload
     def __init__(
-            self,
-            drive_motor_type: type,
-            steer_motor_type: type,
-            encoder_type: type,
-            drivetrain_constants: swerve.SwerveDrivetrainConstants,
-            modules: list[swerve.SwerveModuleConstants],
+        self,
+        drive_motor_type: type,
+        steer_motor_type: type,
+        encoder_type: type,
+        drivetrain_constants: swerve.SwerveDrivetrainConstants,
+        modules: list[swerve.SwerveModuleConstants],
     ) -> None:
         """
         Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -68,13 +68,13 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
     @overload
     def __init__(
-            self,
-            drive_motor_type: type,
-            steer_motor_type: type,
-            encoder_type: type,
-            drivetrain_constants: swerve.SwerveDrivetrainConstants,
-            odometry_update_frequency: units.hertz,
-            modules: list[swerve.SwerveModuleConstants],
+        self,
+        drive_motor_type: type,
+        steer_motor_type: type,
+        encoder_type: type,
+        drivetrain_constants: swerve.SwerveDrivetrainConstants,
+        odometry_update_frequency: units.hertz,
+        modules: list[swerve.SwerveModuleConstants],
     ) -> None:
         """
         Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -102,15 +102,15 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
     @overload
     def __init__(
-            self,
-            drive_motor_type: type,
-            steer_motor_type: type,
-            encoder_type: type,
-            drivetrain_constants: swerve.SwerveDrivetrainConstants,
-            odometry_update_frequency: units.hertz,
-            odometry_standard_deviation: tuple[float, float, float],
-            vision_standard_deviation: tuple[float, float, float],
-            modules: list[swerve.SwerveModuleConstants],
+        self,
+        drive_motor_type: type,
+        steer_motor_type: type,
+        encoder_type: type,
+        drivetrain_constants: swerve.SwerveDrivetrainConstants,
+        odometry_update_frequency: units.hertz,
+        odometry_standard_deviation: tuple[float, float, float],
+        vision_standard_deviation: tuple[float, float, float],
+        modules: list[swerve.SwerveModuleConstants],
     ) -> None:
         """
         Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -146,15 +146,15 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
     # noinspection PyTypeChecker
     def __init__(
-            self,
-            drive_motor_type: type[DriveMotorT],
-            steer_motor_type: type[SteerMotorT],
-            encoder_type: type[EncoderT],
-            drivetrain_constants: swerve.SwerveDrivetrainConstants,
-            arg0=None,
-            arg1=None,
-            arg2=None,
-            arg3=None,
+        self,
+        drive_motor_type: type[DriveMotorT],
+        steer_motor_type: type[SteerMotorT],
+        encoder_type: type[EncoderT],
+        drivetrain_constants: swerve.SwerveDrivetrainConstants,
+        arg0=None,
+        arg1=None,
+        arg2=None,
+        arg3=None,
     ):
         Subsystem.__init__(self)
         swerve.SwerveDrivetrain.__init__(
@@ -190,6 +190,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
                     builder.addDoubleProperty(f"{name} Angle", lambda: self._modules[i].get_current_state().angle.radians(), lambda _: None)
                     builder.addDoubleProperty(f"{name} Velocity", lambda: self._modules[i].get_current_state().speed, lambda _: None)
                 builder.addDoubleProperty("Robot Angle", self._get_rotation, lambda _: None)
+
         SmartDashboard.putData("Swerve Modules", SwerveModuleSendable(self.modules, lambda: (self.get_state_copy().pose.rotation() + self.get_operator_forward_direction()).radians()))
 
         self._pose_pub = self._table.getStructTopic("current_pose", Pose2d).publish()
@@ -285,13 +286,13 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         if utils.is_simulation():
             self._start_sim_thread()
         self._configure_auto_builder()
-    
+
     def _configure_auto_builder(self) -> None:
         """
         Method to configure the auto builder
         """
 
-        #Create config from GUI settings
+        # Create config from GUI settings
         config = RobotConfig.fromGUISettings()
         self._apply_robot_speeds = ApplyRobotSpeeds()
         AutoBuilder.configure(
@@ -310,12 +311,13 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
                 PIDConstants(5.0, 0.0, 0.0)
             ),
             config,
-            lambda: DriverStation.getAlliance() == DriverStation.Alliance.kRed, # If getAlliance() is None (maybe the robot doesn't know its alliance yet), it defaults to blue. This returns True if the alliance is red, and False otherwise
+            lambda: DriverStation.getAlliance() == DriverStation.Alliance.kRed,
+            # If getAlliance() is None (maybe the robot doesn't know its alliance yet), it defaults to blue. This returns True if the alliance is red, and False otherwise
             self
         )
 
     def apply_request(
-            self, request: Callable[[], swerve.requests.SwerveRequest]
+        self, request: Callable[[], swerve.requests.SwerveRequest]
     ) -> Command:
         """
         Returns a command that applies the specified control request to this swerve drivetrain.
@@ -336,7 +338,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         """
         Method to run the swerve drive periodically
         """
-        
+
         # Periodically try to apply the operator perspective.
         # If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
         # This allows us to correct the perspective in case the robot code restarts mid-match.
@@ -364,8 +366,8 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         """
         Start the simulation thread
         """
-        def _sim_periodic():
 
+        def _sim_periodic():
             # the current timestamp, then find change from last time update.
             current_time = utils.get_current_time_seconds()
             delta_time = current_time - self._last_sim_time
@@ -373,10 +375,11 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
             # use the measured time delta, get battery voltage from WPILib
             self.update_sim_state(delta_time, RobotController.getBatteryVoltage())
-            
+
         self._last_sim_time = utils.get_current_time_seconds()
         self._sim_notifier = Notifier(_sim_periodic)
         self._sim_notifier.startPeriodic(self._SIM_LOOP_PERIOD)
+
 
 class DriverAssist(SwerveRequest):
 
@@ -389,39 +392,39 @@ class DriverAssist(SwerveRequest):
 
     # All poses on the blue side of the reef
     _blue_branch_left_targets = [
-        Pose2d(3.091, 4.181, degreesToRadians(0)), # A
-        Pose2d(3.656, 2.916, degreesToRadians(60)), # C
-        Pose2d(5.023, 2.772, degreesToRadians(120)), # E
-        Pose2d(5.850, 3.851, degreesToRadians(180)), # G
-        Pose2d(5.347, 5.134, degreesToRadians(240)), # I
-        Pose2d(3.932, 5.302, degreesToRadians(300)), # K
-    ] #4.4705
+        Pose2d(3.091, 4.181, degreesToRadians(0)),  # A
+        Pose2d(3.656, 2.916, degreesToRadians(60)),  # C
+        Pose2d(5.023, 2.772, degreesToRadians(120)),  # E
+        Pose2d(5.850, 3.851, degreesToRadians(180)),  # G
+        Pose2d(5.347, 5.134, degreesToRadians(240)),  # I
+        Pose2d(3.932, 5.302, degreesToRadians(300)),  # K
+    ]  # 4.4705
 
     _blue_branch_right_targets = [
-        Pose2d(3.091, 3.863, degreesToRadians(0)), # B
-        Pose2d(3.956, 2.748, degreesToRadians(60)), # D
-        Pose2d(5.323, 2.928, degreesToRadians(120)), # F
-        Pose2d(5.862, 4.187, degreesToRadians(180)), # H
-        Pose2d(5.047, 5.290, degreesToRadians(240)), # J
-        Pose2d(3.668, 5.110, degreesToRadians(300)), # L
-    ] #4.4765
+        Pose2d(3.091, 3.863, degreesToRadians(0)),  # B
+        Pose2d(3.956, 2.748, degreesToRadians(60)),  # D
+        Pose2d(5.323, 2.928, degreesToRadians(120)),  # F
+        Pose2d(5.862, 4.187, degreesToRadians(180)),  # H
+        Pose2d(5.047, 5.290, degreesToRadians(240)),  # J
+        Pose2d(3.668, 5.110, degreesToRadians(300)),  # L
+    ]  # 4.4765
 
     # TODO: We should be rotating these poses by 180, but a logic error later in the code means we need to keep them the same way to align correctly. This error should be found.
     # To find the poses on the red side of the reef, we mirror each pose and rotate by 180 degrees.
     _red_branch_left_targets = [
-       Pose2d(
-           Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
-           Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation() + Rotation2d.fromDegrees(180)
-       ) for pose in _blue_branch_left_targets
+        Pose2d(
+            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
+            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
+            pose.rotation() + Rotation2d.fromDegrees(180)
+        ) for pose in _blue_branch_left_targets
     ]
 
     _red_branch_right_targets = [
-       Pose2d(
-           Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
-           Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation() + Rotation2d.fromDegrees(180)
-       ) for pose in _blue_branch_right_targets
+        Pose2d(
+            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
+            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
+            pose.rotation() + Rotation2d.fromDegrees(180)
+        ) for pose in _blue_branch_right_targets
     ]
 
     _branch_targets = {
@@ -476,7 +479,7 @@ class DriverAssist(SwerveRequest):
         """
         The perspective to use when determining which direction is forward.
         """
-        self.fallback: FieldCentric = FieldCentric() # TODO: As of now, this fallback doesn't work. James will be fixing this in a later PR. The functionality of auto aligning is not affected by it.
+        self.fallback: FieldCentric = FieldCentric()  # TODO: As of now, this fallback doesn't work. James will be fixing this in a later PR. The functionality of auto aligning is not affected by it.
         """
         The swerve request to fallback to if further than the max distance.
         """
@@ -538,7 +541,7 @@ class DriverAssist(SwerveRequest):
         # We can then plug in x into our first equation to find y. This will give us the intersection point, which is the pose we want to find distance to.
 
         slope = math.tan(target_pose.rotation().radians())
-        
+
         x = (robot_pose.X() + slope ** 2 * target_pose.X() - slope * target_pose.Y() + slope * robot_pose.Y()) / (slope ** 2 + 1)
         y = slope * (x - target_pose.X()) + target_pose.Y()
 
@@ -552,7 +555,7 @@ class DriverAssist(SwerveRequest):
             return math.sqrt((possible_pose.X() - robot_pose.X()) ** 2 + (possible_pose.Y() - robot_pose.Y()) ** 2)
         else:
             return math.inf
-    
+
     def _find_closest_pose(self, robot_pose: Pose2d, list_of_poses: list[Pose2d]) -> Pose2d:
         closest_pose = Pose2d(math.inf, math.inf, Rotation2d.fromDegrees(0))
         closest_distance = math.inf
@@ -562,7 +565,7 @@ class DriverAssist(SwerveRequest):
             if pose_distance < closest_distance:
                 closest_pose = pose
                 closest_distance = pose_distance
-        
+
         return closest_pose
 
     def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
@@ -592,7 +595,7 @@ class DriverAssist(SwerveRequest):
 
             if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
                 horizontal_velocity *= -1
-            
+
             self._horizontal_velocity_pub.set(horizontal_velocity)
 
             # Take these velocities and rotate it back into the field coordinate system
@@ -602,7 +605,9 @@ class DriverAssist(SwerveRequest):
                 self.__field_centric_facing_angle
                 .with_velocity_x(field_relative_velocity.X())
                 .with_velocity_y(field_relative_velocity.Y())
-                .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
+                .with_target_direction(
+                    target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation()
+                )
                 .with_deadband(self.deadband)
                 .with_rotational_deadband(self.rotational_deadband)
                 .with_drive_request_type(self.drive_request_type)
@@ -611,13 +616,13 @@ class DriverAssist(SwerveRequest):
                 .with_forward_perspective(self.forward_perspective)
                 .apply(parameters, modules)
             )
-        
+
         else:
             return (self.fallback
-            .with_velocity_x(self.velocity_x)
-            .with_velocity_y(self.velocity_y)
-            .with_rotational_rate(self.rotational_rate)
-            .apply(parameters, modules))
+                    .with_velocity_x(self.velocity_x)
+                    .with_velocity_y(self.velocity_y)
+                    .with_rotational_rate(self.rotational_rate)
+                    .apply(parameters, modules))
 
     def with_fallback(self, fallback) -> Self:
         """
@@ -671,7 +676,7 @@ class DriverAssist(SwerveRequest):
 
         self.velocity_x = velocity_x
         return self
-    
+
     def with_velocity_y(self, velocity_y: meters_per_second) -> Self:
         """
         Modifies the velocity we travel right and returns this request for method chaining.
@@ -684,7 +689,7 @@ class DriverAssist(SwerveRequest):
 
         self.velocity_y = velocity_y
         return self
-    
+
     def with_rotational_rate(self, rotational_rate: radians_per_second) -> Self:
         """
         Modifies the angular velocity we travel at and returns this request for method chaining.
@@ -744,7 +749,7 @@ class DriverAssist(SwerveRequest):
 
         self.translation_controller.setPID(p, i, d)
         return self
-    
+
     def with_heading_pid(self, p: float, i: float, d: float) -> Self:
         """
         Modifies the heading PID gains and returns this request for method chaining.
@@ -761,7 +766,7 @@ class DriverAssist(SwerveRequest):
 
         self.heading_controller.setPID(p, i, d)
         return self
-    
+
     def with_deadband(self, deadband: float) -> Self:
         """
         Modifies the velocity deadband and returns this request for method chaining.

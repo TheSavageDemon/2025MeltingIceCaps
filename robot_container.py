@@ -152,6 +152,7 @@ class RobotContainer:
                                           .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
                                           .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
                                           .with_velocity_deadband(Constants.AutoAlignConstants.VELOCITY_DEADBAND)
+                                          .with_rotational_deadband(Constants.AutoAlignConstants.ROTATIONAL_DEADBAND)
                                           )
         )
 
@@ -168,6 +169,7 @@ class RobotContainer:
                                           .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
                                           .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
                                           .with_velocity_deadband(Constants.AutoAlignConstants.VELOCITY_DEADBAND)
+                                          .with_rotational_deadband(Constants.AutoAlignConstants.ROTATIONAL_DEADBAND)
                                           )
         )
 

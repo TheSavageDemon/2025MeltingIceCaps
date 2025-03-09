@@ -103,11 +103,21 @@ class RobotContainer:
         return pose
 
     def _setup_swerve_requests(self):
-        common_settings: Callable[[swerve.requests.SwerveRequest], swerve.requests.SwerveRequest] = lambda req: req.with_deadband(self._max_speed * 0.01).with_rotational_deadband(self._max_angular_rate * 0.01).with_drive_request_type(
-            swerve.SwerveModule.DriveRequestType.VELOCITY
-        ).with_steer_request_type(swerve.SwerveModule.SteerRequestType.MOTION_MAGIC_EXPO)
+        common_settings: Callable[[swerve.requests.SwerveRequest], swerve.requests.SwerveRequest] = (
+            lambda req: req
+            .with_deadband(self._max_speed * 0.01)
+            .with_rotational_deadband(self._max_angular_rate * 0.01)
+            .with_drive_request_type(swerve.SwerveModule.DriveRequestType.VELOCITY)
+            .with_steer_request_type(swerve.SwerveModule.SteerRequestType.MOTION_MAGIC_EXPO)
+        )
         self._field_centric = common_settings(swerve.requests.FieldCentric())
         self._robot_centric = common_settings(swerve.requests.RobotCentric())
+        self._driver_assist = common_settings(
+            DriverAssist()
+            .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
+            .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
+            .with_max_distance(Constants.AutoAlignConstants.MAX_DISTANCE)
+        )
         self._brake = swerve.requests.SwerveDriveBrake()
         self._point = swerve.requests.PointWheelsAt()
 
@@ -140,37 +150,25 @@ class RobotContainer:
         )
 
         self._driver_controller.leftBumper().whileTrue(
-            self.drivetrain.apply_request(lambda: DriverAssist()
-                                          .with_fallback(self._field_centric)
-                                          .with_branch_side(DriverAssist.BranchSide.LEFT)
-                                          .with_max_distance(Constants.AutoAlignConstants.MAX_DISTANCE)
-                                          .with_velocity_x(-hid.getLeftY())
-                                          .with_velocity_y(-hid.getLeftX())
-                                          .with_rotational_rate(-self._driver_controller.getRightX())
-                                          .with_max_speed(self._max_speed)
-                                          .with_max_angular_rate(self._max_angular_rate)
-                                          .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
-                                          .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
-                                          .with_velocity_deadband(Constants.AutoAlignConstants.VELOCITY_DEADBAND)
-                                          .with_rotational_deadband(Constants.AutoAlignConstants.ROTATIONAL_DEADBAND)
-                                          )
+            self.drivetrain.apply_request(
+                lambda: self._driver_assist
+                .with_velocity_x(-hid.getLeftY() * self._max_speed)
+                .with_velocity_y(-hid.getLeftX() * self._max_speed)
+                .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
+                .with_fallback(self._field_centric)
+                .with_branch_side(DriverAssist.BranchSide.LEFT)
+            )
         )
 
         self._driver_controller.rightBumper().whileTrue(
-            self.drivetrain.apply_request(lambda: DriverAssist()
-                                          .with_fallback(self._field_centric)
-                                          .with_branch_side(DriverAssist.BranchSide.RIGHT)
-                                          .with_max_distance(Constants.AutoAlignConstants.MAX_DISTANCE)
-                                          .with_velocity_x(-hid.getLeftY())
-                                          .with_velocity_y(-hid.getLeftX())
-                                          .with_rotational_rate(-self._driver_controller.getRightX())
-                                          .with_max_speed(self._max_speed)
-                                          .with_max_angular_rate(self._max_angular_rate)
-                                          .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
-                                          .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
-                                          .with_velocity_deadband(Constants.AutoAlignConstants.VELOCITY_DEADBAND)
-                                          .with_rotational_deadband(Constants.AutoAlignConstants.ROTATIONAL_DEADBAND)
-                                          )
+            self.drivetrain.apply_request(
+                lambda: self._driver_assist
+                .with_velocity_x(-hid.getLeftY() * self._max_speed)
+                .with_velocity_y(-hid.getLeftX() * self._max_speed)
+                .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
+                .with_fallback(self._field_centric)
+                .with_branch_side(DriverAssist.BranchSide.RIGHT)
+            )
         )
 
         self._driver_controller.a().whileTrue(self.drivetrain.apply_request(lambda: self._brake))

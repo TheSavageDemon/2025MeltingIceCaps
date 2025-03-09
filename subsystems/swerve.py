@@ -439,13 +439,11 @@ class DriverAssist(SwerveRequest):
         self.velocity_x = 0
         self.velocity_y = 0
 
-        self.max_speed = 0
-
         # PID controllers for the y (left) and heading (rotating)
         self.translation_y_controller = PhoenixPIDController(0.0, 0.0, 0.0)
 
         # The deadband on our velocity forward that the driver controls
-        self.velocity_deadband = 0
+        self.deadband = 0
 
         # The deadband on our rotational velocity
         self.rotational_deadband = 0
@@ -568,7 +566,7 @@ class DriverAssist(SwerveRequest):
             rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
 
             # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
-            velocity_towards_pose = rotated_coordinate.X() * self.max_speed
+            velocity_towards_pose = rotated_coordinate.X()
 
             # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
 
@@ -592,7 +590,7 @@ class DriverAssist(SwerveRequest):
                 .with_velocity_x(field_relative_velocity.X())
                 .with_velocity_y(field_relative_velocity.Y())
                 .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
-                .with_deadband(self.velocity_deadband)
+                .with_deadband(self.deadband)
                 .with_rotational_deadband(self.rotational_deadband)
                 .with_drive_request_type(self.drive_request_type)
                 .with_steer_request_type(self.steer_request_type)
@@ -604,9 +602,9 @@ class DriverAssist(SwerveRequest):
         else:
 
             return (self.fallback
-            .with_velocity_x(self.velocity_x * self.max_speed)
-            .with_velocity_y(self.velocity_y * self.max_speed)
-            .with_rotational_rate(self.rotational_rate * self.max_angular_rate)
+            .with_velocity_x(self.velocity_x)
+            .with_velocity_y(self.velocity_y)
+            .with_rotational_rate(self.rotational_rate)
             .apply(parameters, modules))
 
     def with_fallback(self, fallback) -> Self:
@@ -688,30 +686,34 @@ class DriverAssist(SwerveRequest):
         self.rotational_rate = rotational_rate
         return self
 
-    def with_max_speed(self, max_speed) -> Self:
+    def with_drive_request_type(self, new_drive_request_type: SwerveModule.DriveRequestType) -> Self:
         """
-        Modifies the max speed we can travel at and returns this request for method chaining.
+        Modifies the drive_request_type parameter and returns itself.
 
-        :param max_speed: The max speed we can travel at
-        :type max_speed: float
-        :returns: This request
+        The type of control request to use for the drive motor.
+
+        :param new_drive_request_type: Parameter to modify
+        :type new_drive_request_type: SwerveModule.DriveRequestType
+        :returns: this object
         :rtype: DriverAssist
         """
 
-        self.max_speed = max_speed
+        self.drive_request_type = new_drive_request_type
         return self
-    
-    def with_max_angular_rate(self, max_angular_rate) -> Self:
-        """
-        Modifies the max angular rate we can travel at and returns this request for method chaining.
 
-        :param max_angular_rate: The max angular rate we can travel at
-        :type max_angular_rate: float
-        :returns: This request
+    def with_steer_request_type(self, new_steer_request_type: SwerveModule.SteerRequestType) -> Self:
+        """
+        Modifies the steer_request_type parameter and returns itself.
+
+        The type of control request to use for the drive motor.
+
+        :param new_steer_request_type: Parameter to modify
+        :type new_steer_request_type: SwerveModule.SteerRequestType
+        :returns: this object
         :rtype: DriverAssist
         """
 
-        self.max_angular_rate = max_angular_rate
+        self.steer_request_type = new_steer_request_type
         return self
 
     def with_translation_pid(self, p: float, i: float, d: float) -> Self:
@@ -748,7 +750,7 @@ class DriverAssist(SwerveRequest):
         self.heading_controller.setPID(p, i, d)
         return self
     
-    def with_velocity_deadband(self, deadband: float) -> Self:
+    def with_deadband(self, deadband: float) -> Self:
         """
         Modifies the velocity deadband and returns this request for method chaining.
         
@@ -758,7 +760,7 @@ class DriverAssist(SwerveRequest):
         :rtype: DriverAssist
         """
 
-        self.velocity_deadband = deadband
+        self.deadband = deadband
         return self
 
     def with_rotational_deadband(self, rotational_deadband: float) -> Self:

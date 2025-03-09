@@ -162,14 +162,15 @@ class Constants:
 
         MAX_DISTANCE = 3.6343
         
-        TRANSLATION_P = 1
+        TRANSLATION_P = 12
         TRANSLATION_I = 0
-        TRANSLATION_D = 0
+        TRANSLATION_D = 0.1
         
-        HEADING_P = 7
+        HEADING_P = 2
         HEADING_I = 0
-        HEADING_D = 0
+        HEADING_D = 0.2
         
-        HEADING_TOLERANCE = 5
+        HEADING_TOLERANCE = 2
 
-        VELOCITY_DEADBAND = 0.05
+        VELOCITY_DEADBAND = 0.1
+        ROTATIONAL_DEADBAND = 0.02

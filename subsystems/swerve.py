@@ -412,7 +412,7 @@ class DriverAssist(SwerveRequest):
        Pose2d(
            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation()
+           pose.rotation() + Rotation2d.fromDegrees(180)
        ) for pose in _blue_branch_left_targets
     ]
 
@@ -420,9 +420,20 @@ class DriverAssist(SwerveRequest):
        Pose2d(
            Constants.FIELD_LAYOUT.getFieldLength() - pose.X(),
            Constants.FIELD_LAYOUT.getFieldWidth() - pose.Y(),
-           pose.rotation()
+           pose.rotation() + Rotation2d.fromDegrees(180)
        ) for pose in _blue_branch_right_targets
     ]
+
+    _branch_targets = {
+        DriverStation.Alliance.kBlue: {
+            BranchSide.LEFT: _blue_branch_left_targets,
+            BranchSide.RIGHT: _blue_branch_right_targets,
+        },
+        DriverStation.Alliance.kRed: {
+            BranchSide.LEFT: _red_branch_left_targets,
+            BranchSide.RIGHT: _red_branch_right_targets,
+        }
+    }
 
     def __init__(self) -> None:
         self.velocity_x: meters_per_second = 0
@@ -498,6 +509,8 @@ class DriverAssist(SwerveRequest):
         be enabled on the range [-pi, pi].
         """
 
+        self.__current_alliance: DriverStation.Alliance = DriverStation.getAlliance()
+
         self._target_pose = Pose2d()
 
         self._target_pose_pub = NetworkTableInstance.getDefault().getTable("Telemetry").getStructTopic("Target Pose", Pose2d).publish()
@@ -555,26 +568,13 @@ class DriverAssist(SwerveRequest):
     def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
         current_pose = parameters.current_pose
 
-        # Find nearest pose based on our current alliance and desired direction
-        if DriverStation.getAlliance() == DriverStation.Alliance.kBlue:
-            
-            if self.branch_side == DriverAssist.BranchSide.LEFT:
-                self._target_pose = self._find_closest_pose(current_pose, self._blue_branch_left_targets)
-            else:
-                self._target_pose = self._find_closest_pose(current_pose, self._blue_branch_right_targets)
-
-        elif DriverStation.getAlliance() == DriverStation.Alliance.kRed:
-            
-            if self.branch_side == DriverAssist.BranchSide.LEFT:
-                self._target_pose = self._find_closest_pose(current_pose, self._red_branch_left_targets)
-            else:
-                self._target_pose = self._find_closest_pose(current_pose, self._red_branch_right_targets)
+        self._target_pose = self._find_closest_pose(current_pose, self._branch_targets[DriverStation.getAlliance()][self.branch_side])
 
         self._target_pose_pub.set(self._target_pose)
 
         if self._get_distance_to_pose(current_pose, self._target_pose) <= self.max_distance:
 
-            target_direction = self._target_pose.rotation()
+            target_direction = self._target_pose.rotation() + parameters.operator_forward_direction
 
             # New X and Y axis in the direction of the target pose
             rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
@@ -588,9 +588,8 @@ class DriverAssist(SwerveRequest):
             rotated_target_pose = self._target_pose.rotateBy(-target_direction)
 
             # Find horizontal velocity (relative to pose) using our PID controller
-            
             horizontal_velocity = self.translation_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
-            
+
             if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
                 horizontal_velocity *= -1
             
@@ -603,7 +602,7 @@ class DriverAssist(SwerveRequest):
                 self.__field_centric_facing_angle
                 .with_velocity_x(field_relative_velocity.X())
                 .with_velocity_y(field_relative_velocity.Y())
-                .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
+                .with_target_direction(target_direction)
                 .with_deadband(self.deadband)
                 .with_rotational_deadband(self.rotational_deadband)
                 .with_drive_request_type(self.drive_request_type)

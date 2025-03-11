@@ -494,8 +494,7 @@ class DriverAssist(SwerveRequest):
         :param modules: The list of modules to apply the request to
         :type modules: list[SwerveModule]
         :returns: Status code (OK if successful, otherwise a warning or error code)
-        :rtype: StatusCode
-        """
+        :rtype: StatusCode        """
         
         # Our current pose
         current_pose = parameters.current_pose
@@ -533,6 +532,11 @@ class DriverAssist(SwerveRequest):
 
             rotated_current_pose = current_pose.rotateBy(-target_direction)
             rotated_target_pose = self._target_pose.rotateBy(-target_direction)
+            """
+            GET RID OF HORIZONTAL VELOCITY LINE
+            GET RID OF ROTATEBY FUNCTIONS
+            GET RID OF PUBLISH LINES IN THE APPLY
+            """
 
             # Find horizontal velocity (relative to pose) using our PID controller
             

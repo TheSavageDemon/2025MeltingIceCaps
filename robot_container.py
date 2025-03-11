@@ -110,9 +110,9 @@ class RobotContainer:
             .with_drive_request_type(swerve.SwerveModule.DriveRequestType.VELOCITY)
             .with_steer_request_type(swerve.SwerveModule.SteerRequestType.MOTION_MAGIC_EXPO)
         )
-        self._field_centric = common_settings(swerve.requests.FieldCentric())
-        self._robot_centric = common_settings(swerve.requests.RobotCentric())
-        self._driver_assist = common_settings(
+        self._field_centric: swerve.requests.FieldCentric = common_settings(swerve.requests.FieldCentric())
+        self._robot_centric: swerve.requests.RobotCentric = common_settings(swerve.requests.RobotCentric())
+        self._driver_assist: DriverAssist = common_settings(
             DriverAssist()
             .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
             .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)

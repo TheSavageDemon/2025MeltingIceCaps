@@ -439,96 +439,51 @@ class DriverAssist(SwerveRequest):
     }
 
     def __init__(self) -> None:
-        self.velocity_x: meters_per_second = 0
-        """
-        The velocity in the X direction, in m/s. X is defined as forward according to
-        WPILib convention, so this determines how fast to travel forward.
-        """
-        self.velocity_y: meters_per_second = 0
-        """
-        The velocity in the Y direction, in m/s. Y is defined as to the left according
-        to WPILib convention, so this determines how fast to travel to the left.
-        """
-        self.rotational_rate: radians_per_second = 0
-        """
-        The angular rate to rotate at, in radians per second. Angular rate is defined as
-        counterclockwise positive, so this determines how fast to turn counterclockwise.
-        """
-        self.deadband: meters_per_second = 0
-        """
-        The allowable deadband of the request, in m/s.
-        """
-        self.rotational_deadband: radians_per_second = 0
-        """
-        The rotational deadband of the request, in radians per second.
-        """
-        self.drive_request_type: SwerveModule.DriveRequestType = SwerveModule.DriveRequestType.VELOCITY
-        """
-        The type of control request to use for the drive motor.
-        """
-        self.steer_request_type: SwerveModule.SteerRequestType = SwerveModule.SteerRequestType.POSITION
-        """
-        The type of control request to use for the drive motor.
-        """
-        self.desaturate_wheel_speeds: bool = True
-        """
-        Whether to desaturate wheel speeds before applying. For more information, see
-        the documentation of SwerveDriveKinematics.desaturateWheelSpeeds.
-        """
-        self.forward_perspective: ForwardPerspectiveValue = ForwardPerspectiveValue.OPERATOR_PERSPECTIVE
-        """
-        The perspective to use when determining which direction is forward.
-        """
-        self.fallback: FieldCentric = FieldCentric()  # TODO: As of now, this fallback doesn't work. James will be fixing this in a later PR. The functionality of auto aligning is not affected by it.
-        """
-        The swerve request to fallback to if further than the max distance.
-        """
-        self.max_distance: meter = 0
-        """
-        The max distance to allow aligning to a target. 
-        """
-        self.branch_side: DriverAssist.BranchSide = DriverAssist.BranchSide.LEFT
-        """
-        The branch side to align to.
-        """
-        self.translation_controller = PhoenixPIDController(0.0, 0.0, 0.0)
-        """
-        The PID controller used to maintain the desired horizontal translation, relative to the robot's chassis.
-        Users can specify the PID gains to change how aggressively to maintain
-        position.
+        self.velocity_x: meters_per_second = 0 # Velocity forward/back
+        self.velocity_y: meters_per_second = 0 # Velocity left/right
+        self.rotational_rate: radians_per_second = 0 # Angular rate, CCW positive
         
-        This PID controller operates on meters and outputs a target
-        translation rate in meters per second.
-        """
+        self.target_pose = Pose2d() # The target pose we align to
 
-        self.elevator_up_function = lambda: False
+        self.deadband: meters_per_second = 0 # Deadband on linear velocity
+        self.rotational_deadband: radians_per_second = 0 # Deadband on angular velocity
+        
+        self.drive_request_type: SwerveModule.DriveRequestType = SwerveModule.DriveRequestType.VELOCITY # Control velocity of drive motor directly
+        self.steer_request_type: SwerveModule.SteerRequestType = SwerveModule.SteerRequestType.POSITION # Steer motor uses position control
+        
+        self.desaturate_wheel_speeds: bool = True # This ensures no wheel speed is above the maximum speed
+        
+        self.forward_perspective: ForwardPerspectiveValue = ForwardPerspectiveValue.OPERATOR_PERSPECTIVE # Operator perspective is forward
+        
+        self.fallback: FieldCentric = FieldCentric()  # Fallback if we are too far from the target pose
+        self.max_distance: meter = 0 # Max distance we can be from the target pose
+        
+        self.branch_side: DriverAssist.BranchSide = DriverAssist.BranchSide.LEFT # Which side to align to on the reef
+        
+        self.translation_controller = PhoenixPIDController(0.0, 0.0, 0.0) # PID controller for translation
+        
+        self.elevator_up_function = lambda: False # Callback for whether the elevator is up or not
 
-        self.__field_centric_facing_angle = FieldCentricFacingAngle()
-        self.heading_controller = self.__field_centric_facing_angle.heading_controller
-        """
-        The PID controller used to maintain the desired heading.
-        Users can specify the PID gains to change how aggressively to maintain
-        heading.
+        self._field_centric_facing_angle = FieldCentricFacingAngle() # This request utilizes FCFA to align
+        self.heading_controller = self._field_centric_facing_angle.heading_controller # Storing this makes setting the PID easier later
 
-        This PID controller operates on heading radians and outputs a target
-        rotational rate in radians per second. Note that continuous input should
-        be enabled on the range [-pi, pi].
-        """
+        self._current_alliance: DriverStation.Alliance = DriverStation.getAlliance() # Store current alliance to reduce calls later
 
-        self.__current_alliance: DriverStation.Alliance = DriverStation.getAlliance()
-
-        self._target_pose = Pose2d()
-
-        self._target_pose_pub = NetworkTableInstance.getDefault().getTable("Telemetry").getStructTopic("Target Pose", Pose2d).publish()
-        self._horizontal_velocity_pub = NetworkTableInstance.getDefault().getTable("Telemetry").getDoubleTopic("Horizontal Velocity").publish()
+        # self._target_pose_pub = NetworkTableInstance.getDefault().getTable("Telemetry").getStructTopic("Target Pose", Pose2d).publish()
+        # self._horizontal_velocity_pub = NetworkTableInstance.getDefault().getTable("Telemetry").getDoubleTopic("Horizontal Velocity").publish()
 
     @staticmethod
     def _get_distance_to_pose(robot_pose: Pose2d, target_pose: Pose2d) -> float:
+        """
+        Get distance from the robot to a pose. This is used to determine whether we should align or not.
+        """
         return math.sqrt((target_pose.X() - robot_pose.X()) ** 2 + (target_pose.Y() - robot_pose.Y()) ** 2)
 
     @staticmethod
     def _get_distance_to_line(robot_pose: Pose2d, target_pose: Pose2d):
-        """Find the distance from the robot to the line emanating from the target pose."""
+        """
+        Find the distance from the robot to the line emanating from the target pose.
+        """
 
         # To accomplish this, we need to find the intersection point of the line 
         # emanating from the target pose and the line perpendicular to it that passes through the robot pose.
@@ -551,18 +506,24 @@ class DriverAssist(SwerveRequest):
         # this is a possible pose. if it's on the wrong side of the reef it's a false pose.
         possible_pose = Pose2d(x, y, target_pose.rotation())
 
+        # If we are on the blue alliance, this is the reef X. Otherwise, mirror this x coordinate for the red alliance.
         reef_x = 4.4735 if DriverStation.getAlliance() == DriverStation.Alliance.kBlue else Constants.FIELD_LAYOUT.getFieldLength() - 4.4735
 
         # here we check if the reef pose is on the same side as our possible pose. if it is, we return the distance between the robot and the possible pose.
         if (target_pose.X() - reef_x <= 0) == (x - reef_x <= 0):
             return math.sqrt((possible_pose.X() - robot_pose.X()) ** 2 + (possible_pose.Y() - robot_pose.Y()) ** 2)
         else:
+            # Returning infinity ensures this pose won't be considered
             return math.inf
 
     def _find_closest_pose(self, robot_pose: Pose2d, list_of_poses: list[Pose2d]) -> Pose2d:
+        """
+        Find the closest pose to the robot in a list of poses
+        """
         closest_pose = Pose2d(math.inf, math.inf, Rotation2d.fromDegrees(0))
         closest_distance = math.inf
 
+        # Iterate through poses, finding which is closest
         for pose in list_of_poses:
             pose_distance = self._get_distance_to_line(robot_pose, pose)
             if pose_distance < closest_distance:
@@ -572,15 +533,14 @@ class DriverAssist(SwerveRequest):
         return closest_pose
 
     def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
+
         current_pose = parameters.current_pose
 
-        self._target_pose = self._find_closest_pose(current_pose, self._branch_targets[DriverStation.getAlliance()][self.branch_side])
+        self.target_pose = self._find_closest_pose(current_pose, self._branch_targets[DriverStation.getAlliance()][self.branch_side])
 
-        self._target_pose_pub.set(self._target_pose)
+        if self._get_distance_to_pose(current_pose, self.target_pose) <= self.max_distance:
 
-        if self._get_distance_to_pose(current_pose, self._target_pose) <= self.max_distance:
-
-            target_direction = self._target_pose.rotation() + parameters.operator_forward_direction
+            target_direction = self.target_pose.rotation() + parameters.operator_forward_direction
 
             # New X and Y axis in the direction of the target pose
             rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
@@ -591,15 +551,13 @@ class DriverAssist(SwerveRequest):
             # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
 
             rotated_current_pose = current_pose.rotateBy(-target_direction)
-            rotated_target_pose = self._target_pose.rotateBy(-target_direction)
+            rotated_target_pose = self.target_pose.rotateBy(-target_direction)
 
             # Find horizontal velocity (relative to pose) using our PID controller
             horizontal_velocity = self.translation_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
 
             if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
                 horizontal_velocity *= -1
-
-            self._horizontal_velocity_pub.set(horizontal_velocity)
 
             # Take these velocities and rotate it back into the field coordinate system
             field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
@@ -608,7 +566,7 @@ class DriverAssist(SwerveRequest):
                 field_relative_velocity *= 0.25
 
             return (
-                self.__field_centric_facing_angle
+                self._field_centric_facing_angle
                 .with_velocity_x(field_relative_velocity.X())
                 .with_velocity_y(field_relative_velocity.Y())
                 .with_target_direction(
@@ -657,7 +615,6 @@ class DriverAssist(SwerveRequest):
         return self
 
     def with_max_distance(self, max_distance: meter) -> Self:
-
         """
         Modifies the maximum distance we can be away from the target pose to be considered "close enough" (in meters) and returns this request for method chaining.
 

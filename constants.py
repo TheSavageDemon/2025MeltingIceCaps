@@ -166,11 +166,11 @@ class Constants:
         TRANSLATION_I = 0
         TRANSLATION_D = 0.1
         
-        HEADING_P = 2
+        HEADING_P = 5
         HEADING_I = 0
         HEADING_D = 0.2
         
         HEADING_TOLERANCE = 2
 
-        VELOCITY_DEADBAND = 0.1
+        VELOCITY_DEADBAND = 0.5
         ROTATIONAL_DEADBAND = 0.02

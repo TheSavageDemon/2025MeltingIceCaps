@@ -117,6 +117,7 @@ class RobotContainer:
             .with_translation_pid(Constants.AutoAlignConstants.TRANSLATION_P, Constants.AutoAlignConstants.TRANSLATION_I, Constants.AutoAlignConstants.TRANSLATION_D)
             .with_heading_pid(Constants.AutoAlignConstants.HEADING_P, Constants.AutoAlignConstants.HEADING_I, Constants.AutoAlignConstants.HEADING_D)
             .with_max_distance(Constants.AutoAlignConstants.MAX_DISTANCE)
+            .with_elevator_up_function(lambda: not self.elevator.get_current_state() == self.elevator.SubsystemState.DEFAULT)
         )
         self._brake = swerve.requests.SwerveDriveBrake()
         self._point = swerve.requests.PointWheelsAt()

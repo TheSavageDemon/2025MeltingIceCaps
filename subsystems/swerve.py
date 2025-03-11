@@ -500,6 +500,9 @@ class DriverAssist(SwerveRequest):
         This PID controller operates on meters and outputs a target
         translation rate in meters per second.
         """
+
+        self.elevator_up_function = lambda: False
+
         self.__field_centric_facing_angle = FieldCentricFacingAngle()
         self.heading_controller = self.__field_centric_facing_angle.heading_controller
         """
@@ -600,6 +603,9 @@ class DriverAssist(SwerveRequest):
 
             # Take these velocities and rotate it back into the field coordinate system
             field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
+
+            if self.elevator_up_function():
+                field_relative_velocity *= 0.25
 
             return (
                 self.__field_centric_facing_angle
@@ -791,4 +797,17 @@ class DriverAssist(SwerveRequest):
         """
 
         self.rotational_deadband = rotational_deadband
+        return self
+
+    def with_elevator_up_function(self, elevator_up_function: Callable[[], bool]):
+        """
+        Modifies the function that returns whether the elevator is up and returns this request for method chaining.
+
+        :param elevator_up_function: The function for whether the elevator is up or not
+        :type elevator_up_function: Callable
+        :returns: This request
+        :rtype: DriverAssist
+        """
+
+        self.elevator_up_function = elevator_up_function
         return self

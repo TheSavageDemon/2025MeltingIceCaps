@@ -94,10 +94,10 @@ class Constants:
                  .with_k_g(0.27)
                  .with_k_p(30)
                  .with_k_i(0.0)
-                 .with_k_d(0.25)
+                 .with_k_d(0.6343)
                  .with_k_s(0.19)
-                 .with_k_v(0.2)
-                 .with_k_a(0.18)
+                 .with_k_v(0)
+                 .with_k_a(0)
                  .with_gravity_type(GravityTypeValue.ARM_COSINE)
         )
 

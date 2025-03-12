@@ -2,9 +2,9 @@ from enum import auto, Enum
 from typing import Optional
 
 from commands2 import Command, Subsystem, cmd
+from phoenix6 import utils
 from wpilib import DriverStation, SmartDashboard, Mechanism2d, Color8Bit
 
-from constants import Constants
 from robot_state import RobotState
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
@@ -83,11 +83,12 @@ class Superstructure(Subsystem):
         self._pivot_old_state = state.get_pivot_state()
         self._pivot_old_setpoint = pivot.get_setpoint()
 
-        self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
-        self._superstructure_root = self._superstructure_mechanism.getRoot("Root", 1 / 2, 0.125)
-        self._elevator_mech = self._superstructure_root.appendLigament("Elevator", 0.2794, 90, 5, Color8Bit(194, 194, 194))
-        self._pivot_mech = self._elevator_mech.appendLigament("Pivot", 0.635, 90, 4, Color8Bit(19, 122, 127))
-        SmartDashboard.putData("Superstructure Mechanism", self._superstructure_mechanism)
+        if utils.is_simulation():
+            self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
+            self._superstructure_root = self._superstructure_mechanism.getRoot("Root", 1 / 2, 0.125)
+            self._elevator_mech = self._superstructure_root.appendLigament("Elevator", 0.2794, 90, 5, Color8Bit(194, 194, 194))
+            self._pivot_mech = self._elevator_mech.appendLigament("Pivot", 0.635, 90, 4, Color8Bit(19, 122, 127))
+            SmartDashboard.putData("Superstructure Mechanism", self._superstructure_mechanism)
 
     def periodic(self):
         if DriverStation.isDisabled():
@@ -125,8 +126,9 @@ class Superstructure(Subsystem):
         if elevator_state is not ElevatorSubsystem.SubsystemState.IDLE:
             self._elevator_old_state = elevator_state
 
+    def simulationPeriodic(self) -> None:
         self._elevator_mech.setLength(self.elevator.get_height())
-        self._pivot_mech.setAngle(state.get_pivot_position() * 360 - 90)
+        self._pivot_mech.setAngle(self.pivot.get_position() * 360 - 90)
 
     def _set_goal(self, goal: Goal) -> None:
         self._goal = goal

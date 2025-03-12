@@ -1,4 +1,5 @@
 from typing import Callable
+
 import commands2
 import commands2.button
 from commands2 import cmd, InstantCommand
@@ -13,7 +14,6 @@ from wpimath.units import rotationsToRadians
 from constants import Constants
 from generated.tuner_constants import TunerConstants
 from robot_state import RobotState
-from subsystems.climber import ClimberSubsystem
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
 from subsystems.intake import IntakeSubsystem

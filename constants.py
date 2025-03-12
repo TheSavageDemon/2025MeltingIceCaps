@@ -11,6 +11,7 @@ class Constants:
         LEFT_ELEVATOR_TALON = 10
         RIGHT_ELEVATOR_TALON = 11
         INTAKE_TALON = 12
+        CLIMB_TALON = 15 # Placeholder so I don't get errors
         LEFT_PIVOT_TALON = 13
         RIGHT_PIVOT_TALON = 14
         FUNNEL_TALON = 22
@@ -156,7 +157,9 @@ class Constants:
         )
 
         SUPPLY_CURRENT = 20
+        SUPPLY_LIMIT = 30 # Placeholder so I don't get errors
         STATOR_CURRENT = 50
+        STATOR_LIMIT = 60 # Placeholder so I don't get errors
 
     class AutoAlignConstants:
 

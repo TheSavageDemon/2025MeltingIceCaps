@@ -37,6 +37,7 @@ class RobotContainer:
         self.intake = IntakeSubsystem()
         self.elevator = ElevatorSubsystem()
         self.funnel = FunnelSubsystem()
+        self.climber = ClimberSubsystem()
         self.vision = VisionSubsystem(
             self.drivetrain,
             Constants.VisionConstants.FRONT_RIGHT,
@@ -45,7 +46,7 @@ class RobotContainer:
             Constants.VisionConstants.BACK_CENTER,
         )
 
-        self.robot_state = RobotState(self.intake, self.pivot, self.elevator)
+        self.robot_state = RobotState(self.intake, self.pivot, self.elevator, self.climber)
         self.superstructure = Superstructure(
             self.drivetrain, self.pivot, self.elevator, self.funnel, self.vision
         )
@@ -154,6 +155,7 @@ class RobotContainer:
                                           .with_velocity_deadband(Constants.AutoAlignConstants.VELOCITY_DEADBAND)
                                           )
         )
+        
 
         self._driver_controller.rightBumper().whileTrue(
             self.drivetrain.apply_request(lambda: DriverAssist()

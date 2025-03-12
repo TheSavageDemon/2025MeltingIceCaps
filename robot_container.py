@@ -7,7 +7,7 @@ from commands2.button import CommandXboxController, Trigger
 from commands2.sysid import SysIdRoutine
 from pathplannerlib.auto import AutoBuilder, NamedCommands
 from phoenix6 import SignalLogger, swerve
-from wpilib import DriverStation, SmartDashboard, XboxController
+from wpilib import DriverStation, XboxController, SmartDashboard
 from wpimath.geometry import Rotation2d, Pose2d
 from wpimath.units import rotationsToRadians
 

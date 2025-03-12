@@ -3,7 +3,7 @@ import os.path
 from commands2 import CommandScheduler, TimedCommandRobot
 from ntcore import NetworkTableInstance
 from phoenix6 import SignalLogger
-from wpilib import DataLogManager, DriverStation, SmartDashboard, Timer, RobotController
+from wpilib import DataLogManager, DriverStation, Timer
 from wpinet import WebServer, PortForwarder
 
 from constants import Constants
@@ -20,7 +20,7 @@ class Leviathan(TimedCommandRobot):
         DriverStation.silenceJoystickConnectionWarning(not DriverStation.isFMSAttached())
         self.container = RobotContainer()
 
-        SignalLogger.enable_auto_logging(True)
+        SignalLogger.enable_auto_logging(DriverStation.isFMSAttached())
         DataLogManager.start(period=0.2)
         DriverStation.startDataLog(DataLogManager.getLog())
 

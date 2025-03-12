@@ -13,7 +13,6 @@ from wpimath.units import rotationsToRadians
 
 from constants import Constants
 from generated.tuner_constants import TunerConstants
-from robot_state import RobotState
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
 from subsystems.intake import IntakeSubsystem
@@ -44,7 +43,6 @@ class RobotContainer:
             Constants.VisionConstants.BACK_CENTER,
         )
 
-        self.robot_state = RobotState(self.intake, self.pivot, self.elevator)
         self.superstructure = Superstructure(
             self.drivetrain, self.pivot, self.elevator, self.funnel, self.vision
         )

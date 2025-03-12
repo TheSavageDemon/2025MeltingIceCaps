@@ -5,7 +5,6 @@ from commands2 import Command, Subsystem, cmd
 from phoenix6 import utils
 from wpilib import DriverStation, SmartDashboard, Mechanism2d, Color8Bit
 
-from robot_state import RobotState
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
 from subsystems.pivot import PivotSubsystem
@@ -78,10 +77,9 @@ class Superstructure(Subsystem):
         self._goal = self.Goal.DEFAULT
         self.set_goal_command(self._goal)
 
-        state = RobotState.get_instance()
-        self._elevator_old_state = state.get_elevator_state()
-        self._pivot_old_state = state.get_pivot_state()
-        self._pivot_old_setpoint = pivot.get_setpoint()
+        self._elevator_old_state = self.elevator.get_current_state()
+        self._pivot_old_state = self.pivot.get_current_state()
+        self._pivot_old_setpoint = self.pivot.get_setpoint()
 
         if utils.is_simulation():
             self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
@@ -94,14 +92,11 @@ class Superstructure(Subsystem):
         if DriverStation.isDisabled():
             return
 
-        state = RobotState.get_instance()
-
-        pivot_state = state.get_pivot_state()
-        elevator_state = state.get_elevator_state()
+        pivot_state = self.pivot.get_current_state()
+        elevator_state = self.elevator.get_current_state()
 
         # If the elevator needs to move, check if the elevator has coral or if the pivot could interfere with the elevator. 
-        if not self.elevator.is_at_setpoint() and (state.has_coral() or 
-                                                   self.pivot.is_in_elevator(max(self._pivot_old_setpoint, state.get_pivot_position(), self.pivot._state_configs[pivot_state]))):
+        if not self.elevator.is_at_setpoint():
             # Wait for Pivot to leave elevator
             self.pivot.set_desired_state(PivotSubsystem.SubsystemState.AVOID_ELEVATOR)
             self.pivot.freeze()
@@ -110,11 +105,11 @@ class Superstructure(Subsystem):
                 self.elevator.freeze()
 
         # Unfreeze subsystems if safe
-        if not state.is_pivot_in_elevator() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR and elevator_state is ElevatorSubsystem.SubsystemState.IDLE:
+        if not self.pivot.is_in_elevator() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR and elevator_state is ElevatorSubsystem.SubsystemState.IDLE:
             self.elevator.unfreeze()
             self.elevator.set_desired_state(self._elevator_old_state)
 
-        if state.is_elevator_at_setpoint() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR:
+        if self.elevator.is_at_setpoint() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR:
             self.pivot.unfreeze()
             self.pivot.set_desired_state(self._pivot_old_state)
 

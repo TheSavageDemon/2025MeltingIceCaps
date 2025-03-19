@@ -146,8 +146,8 @@ class RobotContainer:
             )
         )
 
-        """
-        self._driver_controller.rightBumper().whileTrue(
+        
+        self._driver_controller.leftBumper().whileTrue(
             self.drivetrain.apply_request(
                 lambda: self._robot_centric
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
@@ -156,7 +156,7 @@ class RobotContainer:
             )
         )
 
-        Trigger(lambda: self._driver_controller.getRightTriggerAxis() > 0.75).whileTrue(
+        self._driver_controller.rightBumper().whileTrue(
             self.intake.set_desired_state_command(self.intake.SubsystemState.CORAL_OUTPUT)
         ).onFalse(
             self.intake.set_desired_state_command(self.intake.SubsystemState.HOLD)
@@ -168,10 +168,9 @@ class RobotContainer:
                 lambda: self._point.with_module_direction(Rotation2d(-hid.getLeftY(), -hid.getLeftX()))
             )
         )
-        """
+        
 
-        self._driver_controller.leftBumper().whileTrue(
-            # eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        Trigger(lambda: self._driver_controller.getLeftTriggerAxis() > 0.75).whileTrue(
             self.drivetrain.apply_request_once(
                 lambda: self._driver_assist
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
@@ -194,7 +193,7 @@ class RobotContainer:
             )
         )
 
-        self._driver_controller.rightBumper().whileTrue(
+        Trigger(lambda: self._driver_controller.getRightTriggerAxis() > 0.75).whileTrue(
             # eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
             self.drivetrain.apply_request_once(
                 lambda: self._driver_assist
@@ -218,7 +217,7 @@ class RobotContainer:
             )
         )
 
-        self._driver_controller.x().onTrue(self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric()))
+        self._driver_controller.start().onTrue(self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric()))
 
         self._setup_sysid_bindings(
             self._driver_controller, self.drivetrain,

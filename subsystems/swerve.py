@@ -1,20 +1,25 @@
+from enum import Enum, auto
 import math
-from typing import Callable, overload
+from typing import Callable, overload, Self
 
+from constants import Constants
 from commands2 import Command, Subsystem
 from commands2.sysid import SysIdRoutine
 from ntcore import NetworkTableInstance
 from pathplannerlib.auto import AutoBuilder, RobotConfig
 from pathplannerlib.controller import PIDConstants, PPHolonomicDriveController
 from pathplannerlib.logging import PathPlannerLogging
-from phoenix6 import swerve, units, utils, SignalLogger
-from phoenix6.swerve import SwerveModule
-from phoenix6.swerve.requests import ApplyRobotSpeeds
+from phoenix6 import swerve, units, utils, SignalLogger, StatusCode
+from phoenix6.swerve import SwerveModule, SwerveControlParameters
+from phoenix6.swerve.requests import ApplyRobotSpeeds, FieldCentric, FieldCentricFacingAngle, ForwardPerspectiveValue, SwerveRequest
 from phoenix6.swerve.swerve_drivetrain import DriveMotorT, SteerMotorT, EncoderT
-from wpilib import DriverStation, Notifier, RobotController
+from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
+from phoenix6.units import meters_per_second, meter, radians_per_second
+from wpilib import DriverStation, Notifier, RobotController, Field2d, SmartDashboard
 from wpilib.sysid import SysIdRoutineLog
-from wpimath.geometry import Rotation2d, Pose2d
+from wpimath.geometry import Rotation2d, Pose2d, Translation2d
 from wpimath.kinematics import ChassisSpeeds, SwerveModuleState
+from wpimath.units import degreesToRadians
 from wpiutil import Sendable, SendableBuilder
 
 
@@ -160,6 +165,10 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
         self._sim_notifier: Notifier | None = None
         self._last_sim_time: units.second = 0.0
+
+        self._field = Field2d()
+        SmartDashboard.putData("Field", self._field)
+        self._field.setRobotPose(Pose2d())
 
         # Keep track if we've ever applied the operator perspective before or not
         self._has_applied_operator_perspective = False
@@ -314,6 +323,19 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         :rtype: Command
         """
         return self.run(lambda: self.set_control(request()))
+    
+    def apply_request_once(
+            self, request: Callable[[], swerve.requests.SwerveRequest]
+    ) -> Command:
+        """
+        Returns a command that applies the specified control request to this swerve drivetrain once.
+        :param request: Lambda returning the request to apply
+        :type request: Callable[[], swerve.requests.SwerveRequest]
+        :returns: Command to run
+        :rtype: Command
+        """
+
+        return self.runOnce(lambda: self.set_control(request()))
 
     def sys_id_quasistatic(self, direction: SysIdRoutine.Direction) -> Command:
         return self._sys_id_routine_to_apply.quasistatic(direction)
@@ -342,6 +364,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
                 self._has_applied_operator_perspective = True
 
         state = self.get_state_copy()
+        self._field.setRobotPose(state.pose)
         self._pose_pub.set(state.pose)
         self._odom_freq.set(1.0 / state.odometry_period)
         self._module_states_pub.set(state.module_states)

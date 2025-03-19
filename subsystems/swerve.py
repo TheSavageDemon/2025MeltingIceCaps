@@ -22,6 +22,8 @@ from wpimath.kinematics import ChassisSpeeds, SwerveModuleState
 from wpimath.units import degreesToRadians
 from wpiutil import Sendable, SendableBuilder
 
+# DELETE THIS!!!!
+import time
 
 class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     """
@@ -544,15 +546,22 @@ class DriverAssist(SwerveRequest):
         return closest_pose
 
     def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
-
+        
+        beforeApplyDone = time.time_ns()
         current_pose = parameters.current_pose
 
+        # TODO: DELETE THIS!!!!!!!
         if self.change_target_pose:
             
+            beforePoseFound = time.time_ns()
             self.target_pose = self._find_closest_pose(current_pose, self._branch_targets[DriverStation.getAlliance()][self.branch_side])
+            afterPoseFound = time.time_ns()
+
+            findPoseTime = afterPoseFound - beforePoseFound
 
         if self._get_distance_to_pose(current_pose, self.target_pose) <= self.max_distance:
-
+            
+            beforeCalculations = time.time_ns()
             target_direction = self.target_pose.rotation() + parameters.operator_forward_direction
 
             # New X and Y axis in the direction of the target pose
@@ -578,6 +587,14 @@ class DriverAssist(SwerveRequest):
             if self.elevator_up_function():
                 field_relative_velocity *= 0.25
 
+            afterApplyDone = time.time_ns()
+            applyTime = afterApplyDone - beforeApplyDone
+            calculationTime = afterApplyDone - beforeCalculations
+            SmartDashboard.putNumber("Total Time", afterApplyDone - beforeApplyDone)
+            SmartDashboard.putNumber("Find Percentage", findPoseTime/applyTime)
+            SmartDashboard.putNumber("Calculation Percentage", calculationTime/applyTime)
+
+
             return (
                 self._field_centric_facing_angle
                 .with_velocity_x(field_relative_velocity.X())
@@ -595,6 +612,10 @@ class DriverAssist(SwerveRequest):
             )
 
         else:
+            
+            afterApplyDone = time.time_ns()
+            SmartDashboard.putNumber("Total Time", afterApplyDone - beforeApplyDone)
+
             return (self.fallback
                     .with_velocity_x(self.velocity_x)
                     .with_velocity_y(self.velocity_y)

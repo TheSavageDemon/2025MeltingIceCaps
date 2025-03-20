@@ -14,12 +14,12 @@ from wpimath.units import rotationsToRadians
 
 from constants import Constants
 from generated.tuner_constants import TunerConstants
+from subsystems.auto_align import DriverAssist
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
 from subsystems.intake import IntakeSubsystem
 from subsystems.pivot import PivotSubsystem
 from subsystems.superstructure import Superstructure
-from subsystems.swerve import DriverAssist
 from subsystems.vision import VisionSubsystem
 
 

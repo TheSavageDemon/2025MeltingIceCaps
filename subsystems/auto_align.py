@@ -96,7 +96,6 @@ class DriverAssist(SwerveRequest):
         
         self.forward_perspective: ForwardPerspectiveValue = ForwardPerspectiveValue.OPERATOR_PERSPECTIVE # Operator perspective is forward
         
-        self.fallback: FieldCentric = FieldCentric()  # Fallback if we are too far from the target pose
         self.max_distance: meter = 0 # Max distance we can be from the target pose
         
         self.change_target_pose: bool = True
@@ -183,68 +182,48 @@ class DriverAssist(SwerveRequest):
             
             self.target_pose = self._find_closest_pose(current_pose, self._branch_targets[DriverStation.getAlliance()][self.branch_side])
 
-        if self._get_distance_to_pose(current_pose, self.target_pose) <= self.max_distance:
+        target_direction = self.target_pose.rotation() + parameters.operator_forward_direction
 
-            target_direction = self.target_pose.rotation() + parameters.operator_forward_direction
+        # New X and Y axis in the direction of the target pose
+        rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
 
-            # New X and Y axis in the direction of the target pose
-            rotated_coordinate = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
+        # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
+        velocity_towards_pose = rotated_coordinate.X()
 
-            # Ignore the Y value because we only care about the component in the direction of the target pose to get our velocity towards the pose
-            velocity_towards_pose = rotated_coordinate.X()
+        # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
 
-            # We need to do the same thing to find the velocity in the Y direction, but this time we'll use a PID controller rather than the driver input.
+        rotated_current_pose = current_pose.rotateBy(-target_direction)
+        rotated_target_pose = self.target_pose.rotateBy(-target_direction)
 
-            rotated_current_pose = current_pose.rotateBy(-target_direction)
-            rotated_target_pose = self.target_pose.rotateBy(-target_direction)
+        # Find horizontal velocity (relative to pose) using our PID controller
+        horizontal_velocity = self.translation_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
 
-            # Find horizontal velocity (relative to pose) using our PID controller
-            horizontal_velocity = self.translation_controller.calculate(rotated_current_pose.Y(), rotated_target_pose.Y(), parameters.timestamp)
+        if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
+            horizontal_velocity *= -1
 
-            if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
-                horizontal_velocity *= -1
+        # Take these velocities and rotate it back into the field coordinate system
+        field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
 
-            # Take these velocities and rotate it back into the field coordinate system
-            field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
+        if self.elevator_up_function():
+            field_relative_velocity *= 0.25
 
-            if self.elevator_up_function():
-                field_relative_velocity *= 0.25
-
-            return (
-                self._field_centric_facing_angle
-                .with_velocity_x(field_relative_velocity.X())
-                .with_velocity_y(field_relative_velocity.Y())
-                .with_target_direction(
-                    target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation()
-                )
-                .with_deadband(self.deadband)
-                .with_rotational_deadband(self.rotational_deadband)
-                .with_drive_request_type(self.drive_request_type)
-                .with_steer_request_type(self.steer_request_type)
-                .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
-                .with_forward_perspective(self.forward_perspective)
-                .apply(parameters, modules)
+        return (
+            self._field_centric_facing_angle
+            .with_velocity_x(field_relative_velocity.X())
+            .with_velocity_y(field_relative_velocity.Y())
+            .with_target_direction(
+                target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation()
             )
+            .with_deadband(self.deadband)
+            .with_rotational_deadband(self.rotational_deadband)
+            .with_drive_request_type(self.drive_request_type)
+            .with_steer_request_type(self.steer_request_type)
+            .with_desaturate_wheel_speeds(self.desaturate_wheel_speeds)
+            .with_forward_perspective(self.forward_perspective)
+            .apply(parameters, modules)
+        )
 
-        else:
-            return (self.fallback
-                    .with_velocity_x(self.velocity_x)
-                    .with_velocity_y(self.velocity_y)
-                    .with_rotational_rate(self.rotational_rate)
-                    .apply(parameters, modules))
 
-    def with_fallback(self, fallback) -> Self:
-        """
-        Modifies the fallback request and returns this request for method chaining.
-
-        :param fallback: The fallback request
-        :type fallback: SwerveRequest
-        :returns: This request
-        :rtype: DriverAssist
-        """
-
-        self.fallback = fallback
-        return self
 
     def with_branch_side(self, branch_side: BranchSide) -> Self:
         """

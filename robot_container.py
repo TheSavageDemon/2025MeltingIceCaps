@@ -80,8 +80,8 @@ class RobotContainer:
             auto = auto.removesuffix(".auto")
             if auto ==".DS_Store":
                 continue
-            self._auto_chooser.addOption(auto, PathPlannerAuto(auto, False))
-            self._auto_chooser.addOption(auto + " (Mirrored)", PathPlannerAuto(auto, True))
+            self._auto_chooser.addOption(auto, PathPlannerAuto(auto))
+            self._auto_chooser.addOption(auto + " (Mirrored)", PathPlannerAuto(auto))
         self._auto_chooser.setDefaultOption("None", cmd.none())
         self._auto_chooser.onChange(
             lambda _: self._set_correct_swerve_position()
@@ -176,7 +176,6 @@ class RobotContainer:
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
                 .with_velocity_y(-hid.getLeftX() * self._max_speed)
                 .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
-                .with_fallback(self._field_centric)
                 .with_change_target_pose(True)
                 .with_branch_side(DriverAssist.BranchSide.LEFT)
             )
@@ -186,7 +185,6 @@ class RobotContainer:
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
                 .with_velocity_y(-hid.getLeftX() * self._max_speed)
                 .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
-                .with_fallback(self._field_centric)
                 .with_change_target_pose(False)
                 .with_branch_side(DriverAssist.BranchSide.LEFT)
             )
@@ -200,7 +198,6 @@ class RobotContainer:
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
                 .with_velocity_y(-hid.getLeftX() * self._max_speed)
                 .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
-                .with_fallback(self._field_centric)
                 .with_change_target_pose(True)
                 .with_branch_side(DriverAssist.BranchSide.RIGHT)
             )
@@ -210,7 +207,6 @@ class RobotContainer:
                 .with_velocity_x(-hid.getLeftY() * self._max_speed)
                 .with_velocity_y(-hid.getLeftX() * self._max_speed)
                 .with_rotational_rate(-self._driver_controller.getRightX() * self._max_angular_rate)
-                .with_fallback(self._field_centric)
                 .with_change_target_pose(False)
                 .with_branch_side(DriverAssist.BranchSide.LEFT)
             )

@@ -5,7 +5,7 @@ from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 
 class Constants:
 
-    apriltag_layout = AprilTagFieldLayout.loadField(AprilTagField.k2025ReefscapeWelded)
+    FIELD_LAYOUT = AprilTagFieldLayout.loadField(AprilTagField.k2025ReefscapeWelded)
 
     class CanIDs:
         LEFT_ELEVATOR_TALON = 10
@@ -13,7 +13,6 @@ class Constants:
         INTAKE_TALON = 12
         LEFT_PIVOT_TALON = 13
         RIGHT_PIVOT_TALON = 14
-        CLIMB_TALON = 15
         FUNNEL_TALON = 22
 
         ELEVATOR_CANDI = 20
@@ -38,7 +37,7 @@ class Constants:
         SERVO_DISENGAGED_ANGLE = 90
 
     class ElevatorConstants:
-        L1_SCORE_POSITION = 0.690674
+        L1_SCORE_POSITION = 2.208
         L2_SCORE_POSITION = 1.841
         L3_SCORE_POSITION = 3.576
         L4_SCORE_POSITION = 6.087158
@@ -50,7 +49,8 @@ class Constants:
         DEFAULT_POSITION = 0
 
         CRUISE_VELOCITY = 8
-        MM_UPWARD_ACCELERATION = 24
+        MM_UPWARD_ACCELERATION = 48
+        MM_BRAKE_ACCELERATION = 24
         MM_DOWNWARD_ACCELERATION = 12
         EXPO_K_V = 10
         EXPO_K_A = 4
@@ -70,15 +70,15 @@ class Constants:
         SETPOINT_TOLERANCE = 0.1
 
     class PivotConstants:
-        INSIDE_ELEVATOR_ANGLE = 0.262207 # Used for subsystem collision checking
-        ELEVATOR_PRIORITY_ANGLE = 0.201943 # We move the pivot to this position until the elevator has reached its setpoint.
-        STOW_ANGLE = 0.2854
+        INSIDE_ELEVATOR_ANGLE = 0.2 # Used for subsystem collision checking
+        ELEVATOR_PRIORITY_ANGLE = 0.168 # We move the pivot to this position until the elevator has reached its setpoint.
+        STOW_ANGLE = 0.188
         GROUND_INTAKE_ANGLE = -0.081543
-        FUNNEL_INTAKE_ANGLE = 0.322
-        ALGAE_INTAKE_ANGLE = -0.033
-        HIGH_SCORING_ANGLE =  0.262
-        MID_SCORING_ANGLE = 0.262
-        LOW_SCORING_ANGLE = 0.338379
+        FUNNEL_INTAKE_ANGLE = 0.299
+        ALGAE_INTAKE_ANGLE = -0.05
+        HIGH_SCORING_ANGLE =  0.22
+        MID_SCORING_ANGLE = 0.22
+        LOW_SCORING_ANGLE = -0.081543
         NET_SCORING_ANGLE = 0.123535
         PROCESSOR_SCORING_ANGLE = 0.004639
         CLIMBER_PRIORITY_ANGLE = 0.201943
@@ -87,29 +87,29 @@ class Constants:
         MAXIMUM_ANGLE = 0.392822
 
         CRUISE_VELOCITY = 3
-        MM_ACCELERATION = 2
+        MM_ACCELERATION = 3
 
         GEAR_RATIO = 961/36
         GAINS = (Slot0Configs()
-                 .with_k_g(0.0)
-                 .with_k_p(60)
+                 .with_k_g(0.27)
+                 .with_k_p(30)
                  .with_k_i(0.0)
-                 .with_k_d(0.0)
-                 .with_k_s(0.0)
-                 .with_k_v(0.0)
-                 .with_k_a(0.0)
+                 .with_k_d(0.6343)
+                 .with_k_s(0.19)
+                 .with_k_v(0)
+                 .with_k_a(0)
                  .with_gravity_type(GravityTypeValue.ARM_COSINE)
         )
 
-        CANCODER_DISCONTINUITY = 0.8
-        CANCODER_OFFSET = 0.4751769375
+        CANCODER_DISCONTINUITY = 0.5
+        CANCODER_OFFSET = 0.380126953125
 
         SETPOINT_TOLERANCE = 0.03125
 
     class IntakeConstants:
 
-        CORAL_INTAKE_SPEED = 0.5
-        FUNNEL_INTAKE_SPEED = 0.4
+        CORAL_INTAKE_SPEED = 0.4*1.2*1.1
+        FUNNEL_INTAKE_SPEED = 0.8*0.75
         CORAL_OUTPUT_SPEED = 0.425
 
         ALGAE_INTAKE_SPEED = 1
@@ -133,7 +133,7 @@ class Constants:
 
     class FunnelConstants:
 
-        CORAL_STATION_POSITION = 0.128
+        CORAL_STATION_POSITION = 0.098
         STOWED_POSITION = 0
 
         GEAR_RATIO = 192/7
@@ -142,7 +142,7 @@ class Constants:
 
         SETPOINT_TOLERANCE = 0.01
 
-        MM_ACCELERATION = 1
+        MM_ACCELERATION = 3.5
 
         GAINS = (Slot0Configs()
             .with_k_p(35)
@@ -151,9 +151,26 @@ class Constants:
             .with_k_s(0.0)
             .with_k_v(0.0)
             .with_k_a(0.0)
-            .with_k_g(0.2811) # Shoutout StormBots
+            .with_k_g(0.25)
             .with_gravity_type(GravityTypeValue.ARM_COSINE)
         )
 
-        SUPPLY_LIMIT = 20
-        STATOR_LIMIT = 50
+        SUPPLY_CURRENT = 20
+        STATOR_CURRENT = 50
+    
+    class AutoAlignConstants:
+
+        MAX_DISTANCE = 3.6343
+        
+        TRANSLATION_P = 12
+        TRANSLATION_I = 0
+        TRANSLATION_D = 0.1
+        
+        HEADING_P = 2
+        HEADING_I = 0
+        HEADING_D = 0.2
+        
+        HEADING_TOLERANCE = 2
+
+        VELOCITY_DEADBAND = 0.1
+        ROTATIONAL_DEADBAND = 0.02

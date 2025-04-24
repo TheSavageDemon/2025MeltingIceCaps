@@ -10,6 +10,7 @@ from phoenix6.controls import Follower, VoltageOut, DynamicMotionMagicVoltage
 from phoenix6.hardware import CANdi, TalonFX
 from phoenix6.signals import ForwardLimitSourceValue
 from wpilib.sysid import SysIdRoutineLog
+from wpimath.geometry import Pose3d, Rotation3d
 from wpimath.system.plant import DCMotor
 
 from constants import Constants
@@ -62,7 +63,7 @@ class ElevatorSubsystem(StateSubsystem):
     _limit_switch_config.reverse_limit_remote_sensor_id = Constants.CanIDs.ELEVATOR_CANDI
     _limit_switch_config.reverse_limit_source = ForwardLimitSourceValue.REMOTE_CANDIS2  # Bottom Limit Switch
     _limit_switch_config.reverse_limit_autoset_position_value = Constants.ElevatorConstants.DEFAULT_POSITION
-    _limit_switch_config.reverse_limit_autoset_position_enable = True
+    _limit_switch_config.reverse_limit_autoset_position_enable = False
 
     def __init__(self) -> None:
         super().__init__("Elevator", self.SubsystemState.DEFAULT)
@@ -118,7 +119,7 @@ class ElevatorSubsystem(StateSubsystem):
             self._master_motor.get_position(), self._master_motor.get_velocity()
         )
         self._at_setpoint = abs(latency_compensated_position - self._position_request.position) <= Constants.ElevatorConstants.SETPOINT_TOLERANCE
-        self.get_network_table().getEntry("At Setpoint").setBoolean(self._at_setpoint)
+        # self.get_network_table().getEntry("At Setpoint").setBoolean(self._at_setpoint)
 
     def set_desired_state(self, desired_state: SubsystemState) -> None:
         if not super().set_desired_state(desired_state):
@@ -145,7 +146,7 @@ class ElevatorSubsystem(StateSubsystem):
             self._master_motor.get_position(), self._master_motor.get_velocity()
         )
         self._at_setpoint = abs(latency_compensated_position - self._position_request.position) <= Constants.ElevatorConstants.SETPOINT_TOLERANCE
-        self.get_network_table().getEntry("At Setpoint").setBoolean(self._at_setpoint)
+        # self.get_network_table().getEntry("At Setpoint").setBoolean(self._at_setpoint)
         return self._at_setpoint
 
     def stop(self) -> Command:
@@ -160,3 +161,17 @@ class ElevatorSubsystem(StateSubsystem):
     def get_height(self) -> float:
         """Returns the height of the elevator, in meters."""
         return (self._master_motor.get_position().value / Constants.ElevatorConstants.GEAR_RATIO) * (2 * math.pi * 0.508)
+
+    def get_component_poses(self) -> tuple[Pose3d, Pose3d]:
+        position = self._master_motor.get_position().value
+        return (
+            Pose3d(0, 0, (position * (0.6985 / 6.096924)), Rotation3d()),
+            Pose3d(0, 0, (position * 2 * (0.6985 / 6.096924)), Rotation3d())
+        )
+
+    def get_target_poses(self) -> tuple[Pose3d, Pose3d]:
+        reference = self._master_motor.get_closed_loop_reference().value
+        return (
+            Pose3d(0, 0, (reference * (0.6985 / 6.096924)), Rotation3d()),
+            Pose3d(0, 0, (reference * 2 * (0.6985 / 6.096924)), Rotation3d())
+        )

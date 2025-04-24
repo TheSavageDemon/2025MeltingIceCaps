@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.2108522727272732,
-        "y": 4.1795596590958946
+        "x": 4.027564102564102,
+        "y": 5.1912179487179495
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.962178166932488,
-        "y": 4.1538460613864325
+        "x": 3.852115384615384,
+        "y": 5.418269230769231
       },
       "isLocked": false,
-      "linkedName": "Coral A"
+      "linkedName": "Coral K"
     },
     {
       "anchor": {
-        "x": 2.172686535355348,
-        "y": 4.140750628140703
+        "x": 1.6073008527420922,
+        "y": 7.363743749998459
       },
       "prevControl": {
-        "x": 2.4393462428870807,
-        "y": 4.153140403473471
+        "x": 1.7983333333333331,
+        "y": 7.1933974358974355
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "Station"
     }
   ],
   "rotationTargets": [],
@@ -34,7 +34,18 @@
   "eventMarkers": [
     {
       "name": "Default",
-      "waypointRelativePos": 0.10798650168728612,
+      "waypointRelativePos": 0.43419572553430674,
+      "endWaypointRelativePos": null,
+      "command": {
+        "type": "named",
+        "data": {
+          "name": "Default"
+        }
+      }
+    },
+    {
+      "name": "Funnel",
+      "waypointRelativePos": 0.7359813084112169,
       "endWaypointRelativePos": null,
       "command": {
         "type": "parallel",
@@ -43,13 +54,13 @@
             {
               "type": "named",
               "data": {
-                "name": "Default"
+                "name": "Funnel"
               }
             },
             {
               "type": "named",
               "data": {
-                "name": "Hold"
+                "name": "Funnel Intake"
               }
             }
           ]
@@ -58,22 +69,22 @@
     }
   ],
   "globalConstraints": {
-    "maxVelocity": 1.333,
-    "maxAcceleration": 3.0,
-    "maxAngularVelocity": 720.0,
-    "maxAngularAcceleration": 1600.0,
+    "maxVelocity": 1.25,
+    "maxAcceleration": 1.25,
+    "maxAngularVelocity": 180.0,
+    "maxAngularAcceleration": 500.0,
     "nominalVoltage": 12.0,
     "unlimited": false
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -54.0
   },
   "reversed": false,
-  "folder": "Men",
+  "folder": null,
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.3819662047291033
+    "rotation": -59.99999999999999
   },
   "useDefaultConstraints": false
 }

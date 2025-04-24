@@ -3,12 +3,14 @@ from typing import Optional
 
 from commands2 import Command, Subsystem, cmd
 from ntcore import NetworkTableInstance
-from phoenix6 import utils
-from wpilib import DriverStation, Mechanism2d, Color8Bit, SmartDashboard
+from wpilib import DriverStation
+from wpimath.geometry import Pose3d
 
 from constants import Constants
+from subsystems.climber import ClimberSubsystem
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
+from subsystems.intake import IntakeSubsystem
 from subsystems.pivot import PivotSubsystem
 from subsystems.swerve import SwerveSubsystem
 from subsystems.vision import VisionSubsystem
@@ -29,10 +31,10 @@ class Superstructure(Subsystem):
         L3_ALGAE = auto()
         PROCESSOR = auto()
         NET = auto()
-
+        CLIMBING = auto()
         FUNNEL = auto()
         FLOOR = auto()
-        CLIMBING = auto()
+        FINISH = auto()
 
     # Map each goal to each subsystem state to reduce code complexity
     _goal_to_states: dict[Goal,
@@ -53,10 +55,11 @@ class Superstructure(Subsystem):
         Goal.NET: (PivotSubsystem.SubsystemState.NET_SCORING, ElevatorSubsystem.SubsystemState.NET, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
         Goal.FUNNEL: (PivotSubsystem.SubsystemState.FUNNEL_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.UP, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
         Goal.FLOOR: (PivotSubsystem.SubsystemState.GROUND_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
-        Goal.CLIMBING: (PivotSubsystem.SubsystemState.AVOID_CLIMBER, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.NO_ESTIMATES)
+        Goal.CLIMBING: (PivotSubsystem.SubsystemState.AVOID_CLIMBER, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.FINISH: (PivotSubsystem.SubsystemState.FUNNEL_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.UP, VisionSubsystem.SubsystemState.ALL_ESTIMATES)
     }
 
-    def __init__(self, drivetrain: SwerveSubsystem, pivot: PivotSubsystem, elevator: ElevatorSubsystem, funnel: FunnelSubsystem, vision: VisionSubsystem) -> None:
+    def __init__(self, drivetrain: SwerveSubsystem, pivot: PivotSubsystem, elevator: ElevatorSubsystem, funnel: FunnelSubsystem, vision: VisionSubsystem, climber: ClimberSubsystem, intake: IntakeSubsystem) -> None:
         """
         Constructs the superstructure using instance of each subsystem.
 
@@ -77,19 +80,15 @@ class Superstructure(Subsystem):
         self.elevator = elevator
         self.funnel = funnel
         self.vision = vision
+        self.climber = climber
+        self.intake = intake
 
         self._goal = self.Goal.DEFAULT
         self.set_goal_command(self._goal)
 
-        table = NetworkTableInstance.getDefault().getTable("Superstructure")
-        self._current_goal_pub = table.getStringTopic("Current Goal").publish()
-
-        if utils.is_simulation():
-            self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
-            self._superstructure_root = self._superstructure_mechanism.getRoot("Root", 1 / 2, 0.125)
-            self._elevator_mech = self._superstructure_root.appendLigament("Elevator", 0.2794, 90, 5, Color8Bit(194, 194, 194))
-            self._pivot_mech = self._elevator_mech.appendLigament("Pivot", 0.635, 90, 4, Color8Bit(19, 122, 127))
-            SmartDashboard.putData("Superstructure Mechanism", self._superstructure_mechanism)
+        # table = NetworkTableInstance.getDefault().getTable("Superstructure")
+        # self._current_goal_pub = table.getStringTopic("Current Goal").publish()
+        # self._component_poses = table.getStructArrayTopic("Components", Pose3d).publish()
 
     def periodic(self):
         if DriverStation.isDisabled():
@@ -106,15 +105,25 @@ class Superstructure(Subsystem):
             self.pivot.unfreeze()
             self.pivot.set_desired_state(self._desired_pivot_state)
 
-    def simulationPeriodic(self) -> None:
-        self._elevator_mech.setLength(self.elevator.get_height())
-        self._pivot_mech.setAngle(self.pivot.get_position() * 360 - 90)
+        # If climber motor position is at the top position (1 is the placeholder for what the value would actually be), it will go to the full climb state
+        if self.climber.get_position() > Constants.ClimberConstants.CLIMB_FULL_THRESHOLD and self.climber.get_current_state() is ClimberSubsystem.SubsystemState.CLIMB_IN:
+            self.climber.set_desired_state(ClimberSubsystem.SubsystemState.CLIMB_IN_FULL)
+        
+        # first_stage_pose, carriage_pose = self.elevator.get_component_poses()
+        # pivot_pose = self.pivot.get_component_pose(carriage_pose)
+        # self._component_poses.set([
+        #     self.funnel.get_component_pose(),
+        #     first_stage_pose,
+        #     carriage_pose,
+        #     pivot_pose,
+        #     self.climber.get_component_pose()
+        # ])
 
     def _set_goal(self, goal: Goal) -> None:
         self._goal = goal
 
         pivot_state, elevator_state, funnel_state, vision_state = self._goal_to_states.get(goal, (None, None, None, None))
-        safety_checks = self._should_enable_safety_checks(pivot_state)
+        safety_checks = self._should_enable_safety_checks(pivot_state, elevator_state)
         if pivot_state:
             self._desired_pivot_state = pivot_state
             if safety_checks:
@@ -134,10 +143,12 @@ class Superstructure(Subsystem):
         if vision_state:
             self.vision.set_desired_state(vision_state)
 
-        self._current_goal_pub.set(goal.name)
+        # self._current_goal_pub.set(goal.name)
 
-    def _should_enable_safety_checks(self, pivot_state: PivotSubsystem.SubsystemState) -> bool:
+    def _should_enable_safety_checks(self, pivot_state: PivotSubsystem.SubsystemState, elevator_state: ElevatorSubsystem.SubsystemState) -> bool:
         """Safety checks are always activated, unless we're already outside the elevator and the new state is also outside the elevator."""
+        if elevator_state == self.elevator.get_current_state():
+            return False
         return not (
                 self.pivot.get_current_state().value < Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
                 and pivot_state.value < Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE

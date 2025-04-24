@@ -3,11 +3,11 @@
     {
       "x": -8,
       "y": -8,
-      "width": 1722,
-      "height": 1034,
+      "width": 1708,
+      "height": 1020,
       "state": {
         "sidebar": {
-          "width": 500,
+          "width": 441,
           "expanded": [
             "/PathPlanner/currentPose/rotation",
             "/Drive",
@@ -18,7 +18,6 @@
             "/NT",
             "/NT/limelight",
             "/NT/limelight/robot_orientation_set",
-            "/Elevator",
             "/Climber",
             "/Log0",
             "/Log0/NT",
@@ -41,9 +40,7 @@
             "/limelight-back/fiducial_id_filters_set",
             "/Telemetry/current_pose",
             "/Telemetry/current_pose/translation",
-            "/Vision",
             "/NT/CameraPublisher/USB Camera 0",
-            "/PathPlanner",
             "/NT/LiveWindow/.status",
             "/NT/Elevator",
             "/NT/Vision",
@@ -51,11 +48,19 @@
             "/NT/Superstructure",
             "/NT/SmartDashboard",
             "/NT/Shuffleboard",
-            "/NT/Pivot"
+            "/NT/Pivot",
+            "/Superstructure/Components/0",
+            "/Superstructure/Components/0/rotation",
+            "/Superstructure/Components/0/rotation/q",
+            "/Superstructure/Component Targets/1/rotation",
+            "/Superstructure/Component Targets/1/rotation/q",
+            "/Superstructure/Component Targets/1/translation",
+            "/Superstructure/Components",
+            "/Superstructure"
           ]
         },
         "tabs": {
-          "selected": 2,
+          "selected": 1,
           "tabs": [
             {
               "type": 0,
@@ -76,7 +81,7 @@
                     "logType": "Pose2d",
                     "visible": true,
                     "options": {
-                      "model": "Oil Spill"
+                      "model": "Leviathan"
                     }
                   },
                   {
@@ -100,14 +105,28 @@
                     }
                   },
                   {
+                    "type": "component",
+                    "logKey": "NT:/Superstructure/Components",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
                     "type": "ghost",
                     "logKey": "NT:/PathPlanner/targetPose",
                     "logType": "Pose2d",
                     "visible": true,
                     "options": {
-                      "model": "Oil Spill",
-                      "color": "#00ff00"
+                      "model": "Leviathan",
+                      "color": "#ff0000"
                     }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/Superstructure/Component Targets",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
                   },
                   {
                     "type": "ghost",
@@ -115,9 +134,16 @@
                     "logType": "Pose2d",
                     "visible": true,
                     "options": {
-                      "model": "Oil Spill",
+                      "model": "Leviathan",
                       "color": "#ff00ff"
                     }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/Superstructure/Components",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
                   },
                   {
                     "type": "aprilTag",
@@ -134,9 +160,16 @@
                     "logType": "Pose2d[]",
                     "visible": true,
                     "options": {
-                      "model": "Oil Spill",
+                      "model": "Leviathan",
                       "color": "#ffff00"
                     }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/Superstructure/Components",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
                   },
                   {
                     "type": "trajectory",
@@ -163,9 +196,16 @@
                     "logType": "Pose2d",
                     "visible": true,
                     "options": {
-                      "model": "Oil Spill",
+                      "model": "Leviathan",
                       "color": "#00ffff"
                     }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/Superstructure/Components",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
                   }
                 ],
                 "game": "2025 Field (Welded)",
@@ -176,14 +216,14 @@
                 "cameraIndex": -1,
                 "orbitFov": 90,
                 "cameraPosition": [
-                  -2.2200975144275037,
-                  2.38228329637397,
-                  2.8763793200252437
+                  -4.803463679238205,
+                  2.077741515155247,
+                  -2.826001915174141
                 ],
                 "cameraTarget": [
-                  -2.845409369094013,
-                  0.7503815954337896,
-                  1.7952193305315167
+                  -5.610254676196956,
+                  1.5270791401539936,
+                  -0.8731753775681556
                 ]
               },
               "controlsHeight": 200

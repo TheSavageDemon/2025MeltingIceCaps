@@ -1,6 +1,7 @@
 from phoenix6.configs.config_groups import Slot0Configs
 from phoenix6.signals import GravityTypeValue
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
+from wpilib import RobotBase
 
 
 class Constants:
@@ -12,7 +13,7 @@ class Constants:
         RIGHT_ELEVATOR_TALON = 11
         INTAKE_TALON = 12
         LEFT_PIVOT_TALON = 13
-        RIGHT_PIVOT_TALON = 14
+        CLIMB_TALON = 15
         FUNNEL_TALON = 22
 
         ELEVATOR_CANDI = 20
@@ -21,7 +22,7 @@ class Constants:
         INTAKE_CANRANGE = 23
 
     class ClimberConstants:
-        GEAR_RATIO = 61504/189
+        GEAR_RATIO = 48
         GAINS = (Slot0Configs()
             .with_k_p(1.0)
             .with_k_i(0.0)
@@ -31,8 +32,11 @@ class Constants:
             .with_k_a(0.0)
         )
 
-        VOLTAGE_INWARDS = 16
-        VOLTAGE_OUTWARDS = -4
+        VOLTAGE_INWARDS = 4
+        VOLTAGE_OUTWARDS = -5
+        CLIMB_IN_VOLTAGE = 4
+
+        CLIMB_FULL_THRESHOLD = 0.44
 
         SERVO_PORT = 0
         SERVO_ENGAGED_ANGLE = 0
@@ -61,11 +65,11 @@ class Constants:
 
         GEAR_RATIO = 31/4
         GAINS = (Slot0Configs()
-            .with_k_g(0.36)
+            .with_k_g(0.352)
             .with_k_p(40)
             .with_k_i(0.0)
             .with_k_d(0.0)
-            .with_k_s(0.11)
+            .with_k_s(0.062)
             .with_k_v(0.0)
             .with_k_a(0.0)
             .with_gravity_type(GravityTypeValue.ELEVATOR_STATIC)
@@ -77,12 +81,12 @@ class Constants:
         INSIDE_ELEVATOR_ANGLE = 0.2 # Used for subsystem collision checking
         ELEVATOR_PRIORITY_ANGLE = 0.123535 # We move the pivot to this position until the elevator has reached its setpoint.
         STOW_ANGLE = 0.188
-        GROUND_INTAKE_ANGLE = -0.081543
-        FUNNEL_INTAKE_ANGLE = 0.286
+        GROUND_INTAKE_ANGLE = -0.119385
+        FUNNEL_INTAKE_ANGLE = 0.28
         ALGAE_INTAKE_ANGLE = -0.05
         HIGH_SCORING_ANGLE =  0.21
         MID_SCORING_ANGLE = 0.22
-        LOW_SCORING_ANGLE = -0.081543
+        LOW_SCORING_ANGLE = -0.119385
         NET_SCORING_ANGLE = 0.131
         PROCESSOR_SCORING_ANGLE = 0.001
         CLIMBER_PRIORITY_ANGLE = 0.201943
@@ -95,18 +99,18 @@ class Constants:
 
         GEAR_RATIO = 961/36
         GAINS = (Slot0Configs()
-                 .with_k_g(0.27)
-                 .with_k_p(30)
+                 .with_k_g(0.518)
+                 .with_k_p(45)
                  .with_k_i(0.0)
                  .with_k_d(0.6343)
-                 .with_k_s(0.19)
+                 .with_k_s(0.26)
                  .with_k_v(0)
                  .with_k_a(0)
                  .with_gravity_type(GravityTypeValue.ARM_COSINE)
         )
 
         CANCODER_DISCONTINUITY = 0.5
-        CANCODER_OFFSET = 0.380126953125
+        CANCODER_OFFSET = 0.35009765625
 
         SETPOINT_TOLERANCE = 0.03125
 
@@ -141,10 +145,10 @@ class Constants:
 
     class FunnelConstants:
 
-        CORAL_STATION_POSITION = 0.105
+        CORAL_STATION_POSITION = 0.24
         STOWED_POSITION = 0
 
-        GEAR_RATIO = 192/7
+        GEAR_RATIO = 12
 
         CRUISE_VELOCITY = 1 
 
@@ -167,18 +171,10 @@ class Constants:
         STATOR_CURRENT = 50
     
     class AutoAlignConstants:
-
-        MAX_DISTANCE = 3.6343
-        
-        TRANSLATION_P = 12
+        TRANSLATION_P = 9
         TRANSLATION_I = 0
         TRANSLATION_D = 0.1
         
-        HEADING_P = 2
+        HEADING_P = 1
         HEADING_I = 0
         HEADING_D = 0.2
-        
-        HEADING_TOLERANCE = 2
-
-        VELOCITY_DEADBAND = 0.1
-        ROTATIONAL_DEADBAND = 0.02

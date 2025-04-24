@@ -1,9 +1,10 @@
 import os.path
 
 from commands2 import CommandScheduler, TimedCommandRobot
+from cscore import CameraServer
 from ntcore import NetworkTableInstance
 from phoenix6 import SignalLogger
-from wpilib import DataLogManager, DriverStation, Timer, CameraServer
+from wpilib import DataLogManager, DriverStation, Timer
 from wpinet import WebServer, PortForwarder
 
 from constants import Constants
@@ -20,17 +21,19 @@ class Leviathan(TimedCommandRobot):
         DriverStation.silenceJoystickConnectionWarning(not DriverStation.isFMSAttached())
         self.container = RobotContainer()
 
-        SignalLogger.enable_auto_logging(DriverStation.isFMSAttached())
-        DataLogManager.start(period=0.2)
-        DriverStation.startDataLog(DataLogManager.getLog())
+        SignalLogger.enable_auto_logging(False)
+        SignalLogger.stop()
+        DataLogManager.start(period=0.3)
+        #DriverStation.startDataLog(DataLogManager.getLog())
 
-        CameraServer.launch()
+        CameraServer.startAutomaticCapture()
+        CameraServer.startAutomaticCapture()
 
-        WebServer.getInstance().start(5800, self.get_deploy_directory())
-        port_forwarder = PortForwarder.getInstance()
-        for i in range(10): # Forward limelight ports for use when tethered at events.
-            port_forwarder.add(5800 + i, f"{Constants.VisionConstants.FRONT_CENTER}.local", 5800 + i)
-            port_forwarder.add(5800 + i + 10, f"{Constants.VisionConstants.BACK_CENTER}.local", 5800 + i)
+        #WebServer.getInstance().start(5800, self.get_deploy_directory())
+        # port_forwarder = PortForwarder.getInstance()
+        # for i in range(10): # Forward limelight ports for use when tethered at events.
+        #     port_forwarder.add(5800 + i, f"{Constants.VisionConstants.FRONT_CENTER}.local", 5800 + i)
+        #     port_forwarder.add(5800 + i + 10, f"{Constants.VisionConstants.BACK_CENTER}.local", 5800 + i)
 
         DataLogManager.log("Robot initialized")
 
@@ -85,9 +88,13 @@ class Leviathan(TimedCommandRobot):
         DataLogManager.log("Test period started")
         CommandScheduler.getInstance().cancelAll()
         elasticlib.select_tab("Debug")
+        SignalLogger.start()
 
     def disabledInit(self):
-        SignalLogger.stop()
+        self.container.vision.set_throttle(150)
+
+    def disabledExit(self):
+        self.container.vision.set_throttle(0)
 
     def testExit(self):
         DataLogManager.log("Test period ended")
@@ -96,4 +103,7 @@ class Leviathan(TimedCommandRobot):
         pass
 
     def teleopPeriodic(self) -> None:
+        pass
+
+    def testPeriodic(self) -> None:
         pass

@@ -7,7 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Left to Coral I"
+            "pathName": "Left to Coral J"
           }
         },
         {
@@ -23,7 +23,7 @@
               {
                 "type": "wait",
                 "data": {
-                  "waitTime": 0.5
+                  "waitTime": 0.25
                 }
               },
               {
@@ -38,13 +38,51 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Coral I to Left Tree"
+            "pathName": "Coral J to Station Pickup"
+          }
+        },
+        {
+          "type": "sequential",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "Funnel"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Funnel Intake"
+                }
+              },
+              {
+                "type": "parallel",
+                "data": {
+                  "commands": [
+                    {
+                      "type": "named",
+                      "data": {
+                        "name": "Default"
+                      }
+                    },
+                    {
+                      "type": "named",
+                      "data": {
+                        "name": "Hold"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "Left Tree to Coral L"
+            "pathName": "Station Pickup to Coral K"
           }
         },
         {
@@ -60,7 +98,7 @@
               {
                 "type": "wait",
                 "data": {
-                  "waitTime": 0.5
+                  "waitTime": 0.25
                 }
               },
               {
@@ -75,7 +113,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Coral L to Middle Tree"
+            "pathName": "Coral K to Station"
           }
         },
         {
@@ -85,50 +123,32 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "Coral Output"
-                }
-              },
-              {
-                "type": "wait",
-                "data": {
-                  "waitTime": 0.5
+                  "name": "Funnel"
                 }
               },
               {
                 "type": "named",
                 "data": {
-                  "name": "Hold"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Coral A to Boootom Tree"
-          }
-        },
-        {
-          "type": "sequential",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "Coral Output"
+                  "name": "Funnel Intake"
                 }
               },
               {
-                "type": "wait",
+                "type": "parallel",
                 "data": {
-                  "waitTime": 0.5
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "Hold"
+                  "commands": [
+                    {
+                      "type": "named",
+                      "data": {
+                        "name": "Default"
+                      }
+                    },
+                    {
+                      "type": "named",
+                      "data": {
+                        "name": "Hold"
+                      }
+                    }
+                  ]
                 }
               }
             ]
@@ -137,7 +157,7 @@
       ]
     }
   },
-  "resetOdom": true,
+  "resetOdom": false,
   "folder": null,
   "choreoAuto": false
 }

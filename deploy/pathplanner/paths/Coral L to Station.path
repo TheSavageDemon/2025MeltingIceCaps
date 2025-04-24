@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.717948717948717,
-        "y": 5.036410256410257
+        "x": 3.696330297059495,
+        "y": 5.061050143677029
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.5560499500000624,
-        "y": 5.385936788638289
+        "x": 3.53443152911084,
+        "y": 5.4105766759050615
       },
       "isLocked": false,
       "linkedName": "Coral L"
@@ -34,7 +34,7 @@
   "eventMarkers": [
     {
       "name": "asdfasfsfa",
-      "waypointRelativePos": 0.06441558441558301,
+      "waypointRelativePos": 0.7188473520249218,
       "endWaypointRelativePos": null,
       "command": {
         "type": "named",
@@ -57,7 +57,7 @@
     "rotation": -59.99999999999999
   },
   "reversed": false,
-  "folder": "Toddlers",
+  "folder": null,
   "idealStartingState": {
     "velocity": 0,
     "rotation": -59.99999999999999

@@ -4,7 +4,9 @@ from phoenix6.configs import CurrentLimitsConfigs, TalonFXConfiguration, MotionM
 from phoenix6.controls import VoltageOut, MotionMagicVoltage
 from phoenix6.hardware import TalonFX
 from phoenix6.signals import InvertedValue, NeutralModeValue
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 from wpimath.system.plant import DCMotor
+from wpimath.units import rotationsToRadians
 
 from constants import Constants
 from subsystems import StateSubsystem
@@ -62,3 +64,10 @@ class FunnelSubsystem(StateSubsystem):
         position = self._state_configs.get(desired_state, Constants.FunnelConstants.STOWED_POSITION)
         self._position_request.position = position
         self._funnel_motor.set_control(self._position_request)
+
+    def get_component_pose(self) -> Pose3d:
+        return Pose3d(Translation3d(-0.311150, 0, 0.703243), Rotation3d(0, -rotationsToRadians(self._funnel_motor.get_position().value), 0))
+
+    def get_target_pose(self) -> Pose3d:
+        """Works the same as self.get_component_pose, but instead with the PIDReference rather than current position."""
+        return Pose3d(Translation3d(-0.311150, 0, 0.703243), Rotation3d(0, -rotationsToRadians(self._funnel_motor.get_closed_loop_reference().value), 0))

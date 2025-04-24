@@ -1,14 +1,13 @@
-from typing import Callable, Self
+from typing import Self
 
 from phoenix6 import StatusCode
-from phoenix6.swerve import SwerveModule, SwerveControlParameters
-from phoenix6.swerve.requests import FieldCentric, FieldCentricFacingAngle, ForwardPerspectiveValue, SwerveRequest
+from phoenix6.swerve import SwerveModule, SwerveControlParameters, Translation2d
+from phoenix6.swerve.requests import FieldCentricFacingAngle, ForwardPerspectiveValue, RobotCentricFacingAngle, SwerveRequest
 from phoenix6.swerve.utility.phoenix_pid_controller import PhoenixPIDController
-from phoenix6.units import meters_per_second, meter, radians_per_second
+from phoenix6.units import meters_per_second, radians_per_second
 from wpilib import DriverStation
-from wpimath.geometry import Pose2d, Translation2d
-
-from constants import Constants
+from wpimath.geometry import Pose2d
+from wpimath import applyDeadband
 
 
 class DriverAssist(SwerveRequest):
@@ -16,9 +15,6 @@ class DriverAssist(SwerveRequest):
     def __init__(self) -> None:
         self.velocity_x: meters_per_second = 0  # Velocity forward/back
         self.velocity_y: meters_per_second = 0  # Velocity left/right
-        self.rotational_rate: radians_per_second = 0  # Angular rate, CCW positive
-
-        self.target_pose = Pose2d()  # The target pose we align to
 
         self.deadband: meters_per_second = 0  # Deadband on linear velocity
         self.rotational_deadband: radians_per_second = 0  # Deadband on angular velocity
@@ -30,59 +26,34 @@ class DriverAssist(SwerveRequest):
 
         self.forward_perspective: ForwardPerspectiveValue = ForwardPerspectiveValue.OPERATOR_PERSPECTIVE  # Operator perspective is forward
 
-        self.fallback: FieldCentric = FieldCentric()  # Fallback if we are too far from the target pose
-        self.max_distance: meter = 0  # Max distance we can be from the target pose
-
-        self.target_pose: Pose2d = Pose2d()
-
         self.translation_controller = PhoenixPIDController(0.0, 0.0, 0.0)  # PID controller for translation
 
-        self.elevator_up_function = lambda: False  # Callback for whether the elevator is up or not
+        self.target_pose: Pose2d = Pose2d() # Pose to align to
 
         self._field_centric_facing_angle = FieldCentricFacingAngle()
         self.heading_controller = self._field_centric_facing_angle.heading_controller
 
-    @staticmethod
-    def _get_distance_to_pose(robot_pose: Pose2d, target_pose: Pose2d) -> float:
-        """
-        Get distance from the robot to a pose. This is used to determine whether we should align or not.
-        """
-        return (target_pose.X() - robot_pose.X()) ** 2 + (target_pose.Y() - robot_pose.Y()) ** 2
-
     def apply(self, parameters: SwerveControlParameters, modules: list[SwerveModule]) -> StatusCode:
-        current_pose = parameters.current_pose
-        alliance = DriverStation.getAlliance()
+        target_rot = self.target_pose.rotation()
+        if self.forward_perspective == ForwardPerspectiveValue.OPERATOR_PERSPECTIVE:
+            target_rot += parameters.operator_forward_direction
 
-        distance_to_target = self._get_distance_to_pose(current_pose, self.target_pose)
-        if distance_to_target > self.max_distance ** 2:
-            return self.fallback.with_velocity_x(self.velocity_x).with_velocity_y(self.velocity_y).with_rotational_rate(self.rotational_rate).apply(parameters, modules)
+        # Get Y error (rotated to robot relative to align horizontally)
+        y_error = (parameters.current_pose.X() * (-target_rot).sin() + parameters.current_pose.Y() * (-target_rot).cos()) - (self.target_pose.X() * (-target_rot).sin() + self.target_pose.Y() * (-target_rot).cos())
+        if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
+            y_error *= -1
 
-        target_direction = self.target_pose.rotation() + parameters.operator_forward_direction
-        rotated_velocity = Translation2d(self.velocity_x, self.velocity_y).rotateBy(-target_direction)
+        # Rotate robot relative velocity back to field centric view
+        field_relative_velocity = Translation2d(
+            self.velocity_x * target_rot.cos() + self.velocity_y * target_rot.sin(),
+            self.deadbandFunc(max(-1.5, min(self.translation_controller.calculate(y_error, 0, parameters.timestamp), 1.5)), self.deadband) # Clamp value to ensure we don't tip
+        ).rotateBy(target_rot)
 
-        velocity_towards_pose = rotated_velocity.X()
-
-        current_y = current_pose.translation().rotateBy(-target_direction).Y()
-        target_y = self.target_pose.translation().rotateBy(-target_direction).Y()
-
-        # Adjust for red alliance to ensure consistent motion correction
-        horizontal_velocity = self.translation_controller.calculate(
-            -current_y if alliance == DriverStation.Alliance.kRed else current_y,
-            -target_y if alliance == DriverStation.Alliance.kRed else target_y,
-            parameters.timestamp
-        )
-
-        if self.elevator_up_function():
-            horizontal_velocity *= 0.3333
-
-        field_relative_velocity = Translation2d(velocity_towards_pose, horizontal_velocity).rotateBy(target_direction)
-
-        return (
-            self._field_centric_facing_angle
+        return (self._field_centric_facing_angle
             .with_velocity_x(field_relative_velocity.X())
             .with_velocity_y(field_relative_velocity.Y())
-            .with_target_direction(target_direction if abs(target_direction.degrees() - current_pose.rotation().degrees()) >= Constants.AutoAlignConstants.HEADING_TOLERANCE else current_pose.rotation())
-            .with_deadband(self.deadband)
+            .with_target_direction(target_rot)
+            .with_deadband(0)
             .with_rotational_deadband(self.rotational_deadband)
             .with_drive_request_type(self.drive_request_type)
             .with_steer_request_type(self.steer_request_type)
@@ -91,17 +62,19 @@ class DriverAssist(SwerveRequest):
             .apply(parameters, modules)
         )
 
-    def with_fallback(self, fallback) -> Self:
-        """
-        Modifies the fallback request and returns this request for method chaining.
+    @property
+    def target_pose(self) -> Pose2d:
+        return self._target_pose
+    
+    @target_pose.setter
+    def target_pose(self, value: Pose2d) -> None:
+        self._target_pose = value
+        self._target_rot = value.rotation()
 
-        :param fallback: The fallback request
-        :type fallback: SwerveRequest
-        :returns: This request
-        :rtype: DriverAssist
-        """
-        self.fallback = fallback
-        return self
+    def deadbandFunc(self, value, deadband):
+        if abs(value) >= deadband:
+            return value
+        return 0
 
     def with_target_pose(self, new_target_pose: Pose2d) -> Self:
         """
@@ -112,18 +85,6 @@ class DriverAssist(SwerveRequest):
         :rtype: DriverAssist
         """
         self.target_pose = new_target_pose
-        return self
-
-    def with_max_distance(self, max_distance: meter) -> Self:
-        """
-        Modifies the maximum distance we can be away from the target pose to be considered "close enough" (in meters) and returns this request for method chaining.
-
-        :param max_distance: The maximum distance we can be away from the target pose to be considered "close enough"
-        :type max_distance: meter
-        :returns: This request
-        :rtype: DriverAssist
-        """
-        self.max_distance = max_distance
         return self
 
     def with_velocity_x(self, velocity_x: meters_per_second) -> Self:
@@ -148,18 +109,6 @@ class DriverAssist(SwerveRequest):
         :rtype: DriverAssist
         """
         self.velocity_y = velocity_y
-        return self
-
-    def with_rotational_rate(self, rotational_rate: radians_per_second) -> Self:
-        """
-        Modifies the angular velocity we travel at and returns this request for method chaining.
-
-        :param rotational_rate: The angular velocity we travel at
-        :type rotational_rate: radians_per_second
-        :returns: This request
-        :rtype: DriverAssist
-        """
-        self.rotational_rate = rotational_rate
         return self
 
     def with_drive_request_type(self, new_drive_request_type: SwerveModule.DriveRequestType) -> Self:
@@ -245,15 +194,4 @@ class DriverAssist(SwerveRequest):
         """
         self.rotational_deadband = rotational_deadband
         return self
-
-    def with_elevator_up_function(self, elevator_up_function: Callable[[], bool]) -> Self:
-        """
-        Modifies the function that returns whether the elevator is up and returns this request for method chaining.
-
-        :param elevator_up_function: The function for whether the elevator is up or not
-        :type elevator_up_function: Callable
-        :returns: This request
-        :rtype: DriverAssist
-        """
-        self.elevator_up_function = elevator_up_function
-        return self
+    

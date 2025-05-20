@@ -74,7 +74,7 @@ class TunerConstants:
 
     # Theoretical free speed (m/s) at 12 V applied output;
     # This needs to be tuned to your individual robot
-    speed_at_12_volts: units.meters_per_second = 4.2
+    speed_at_12_volts: units.meters_per_second = 2.1 # Usually 4.2
 
     # Every 1 rotation of the azimuth results in _couple_ratio drive motor turns;
     # This may need to be tuned to your individual robot
@@ -132,7 +132,7 @@ class TunerConstants:
     _front_left_drive_motor_id = 3
     _front_left_steer_motor_id = 7
     _front_left_encoder_id = 7
-    _front_left_encoder_offset: units.rotation = 0.155029296875
+    _front_left_encoder_offset: units.rotation = 0.157958984375
     _front_left_steer_motor_inverted = True
     _front_left_encoder_inverted = False
 
@@ -154,7 +154,7 @@ class TunerConstants:
     _back_left_drive_motor_id = 4
     _back_left_steer_motor_id = 8
     _back_left_encoder_id = 8
-    _back_left_encoder_offset: units.rotation = -0.241943359375
+    _back_left_encoder_offset: units.rotation = -0.436767578125
     _back_left_steer_motor_inverted = True
     _back_left_encoder_inverted = False
 
@@ -165,7 +165,7 @@ class TunerConstants:
     _back_right_drive_motor_id = 2
     _back_right_steer_motor_id = 6
     _back_right_encoder_id = 6
-    _back_right_encoder_offset: units.rotation = -0.06494140625
+    _back_right_encoder_offset: units.rotation = -0.06689453125
     _back_right_steer_motor_inverted = True
     _back_right_encoder_inverted = False
 
